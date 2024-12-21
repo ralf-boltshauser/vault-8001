@@ -32,6 +32,22 @@ export class ReportService {
     return reports;
   }
 
+  public generatePhoneReport(
+    attack: Attack,
+    casualty: CrewMember,
+    lastWords: string
+  ): TurnReport {
+    return {
+      crewMemberId: casualty.id,
+      message: `${this.generateHeistDetails(attack)}. ${lastWords}`,
+      details: {
+        location: attack.bank.name,
+        outcome: attack.outcome,
+        lastWords,
+      },
+    };
+  }
+
   private generateSurvivorMessage(
     attack: Attack,
     lootPerMember: number

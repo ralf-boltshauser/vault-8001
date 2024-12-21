@@ -475,23 +475,33 @@ export class GameService {
         ? this.generateLastWords(casualty.combatant)
         : undefined;
 
-      const report: TurnReport = {
-        crewMemberId: casualty.combatant.id,
-        message:
-          hasPhone && lastWords
-            ? lastWords
-            : `${casualty.combatant.name} was ${
-                casualty.died
-                  ? "killed"
-                  : `arrested (${casualty.jailTerm} days)`
-              } during the operation.`,
-        details: {
-          causeOfDeath: casualty.died
-            ? "Killed in action"
-            : `Arrested for ${casualty.jailTerm} days`,
-          lastWords: lastWords,
-        },
-      };
+      let report: TurnReport;
+      if (hasPhone && casualty.died) {
+        // Generate a detailed report for crew members with phones who died
+        report = this.reportService.generatePhoneReport(
+          attack,
+          casualty.combatant,
+          lastWords!
+        );
+      } else {
+        report = {
+          crewMemberId: casualty.combatant.id,
+          message:
+            hasPhone && lastWords
+              ? lastWords
+              : `${casualty.combatant.name} was ${
+                  casualty.died
+                    ? "killed"
+                    : `arrested (${casualty.jailTerm} days)`
+                } during the operation.`,
+          details: {
+            causeOfDeath: casualty.died
+              ? "Killed in action"
+              : `Arrested for ${casualty.jailTerm} days`,
+            lastWords: lastWords,
+          },
+        };
+      }
 
       crew.turnReports = crew.turnReports || [];
       crew.turnReports.push(report);
