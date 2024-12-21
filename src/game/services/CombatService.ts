@@ -112,16 +112,28 @@ export class CombatService {
 
   public teamCombat(
     attackers: CrewMember[],
-    numDefenders: number,
+    defendersOrCount: number | CrewMember[],
     isGuards: boolean = true
   ): TeamCombatResult {
     console.log(
       `\n🥊 Starting ${isGuards ? "Crew vs Guards" : "Crew vs Crew"} combat:`
     );
     console.log(`  Attackers: ${attackers.map((a) => a.name).join(", ")}`);
+
+    const numDefenders =
+      typeof defendersOrCount === "number"
+        ? defendersOrCount
+        : defendersOrCount.length;
+    const defenders =
+      typeof defendersOrCount === "number" ? null : defendersOrCount;
+
     console.log(
       `  Defenders: ${
-        isGuards ? `${numDefenders} guards` : `${numDefenders} crew members`
+        isGuards
+          ? `${numDefenders} guards`
+          : defenders
+          ? defenders.map((d) => d.name).join(", ")
+          : numDefenders + " crew members"
       }`
     );
 
@@ -129,6 +141,7 @@ export class CombatService {
     const casualties: CombatantResult[] = [];
     let remainingDefenders = numDefenders;
     let currentAttackers = [...attackers];
+    let currentDefenders = defenders ? [...defenders] : null;
     let currentAttackerIndex = 0;
 
     // Keep going until we run out of attackers or defenders
@@ -169,7 +182,9 @@ export class CombatService {
         }
       } else {
         // For crew vs crew, it's still one fight per pair
-        const defender = currentAttackers[currentAttackerIndex + 1];
+        const defender = currentDefenders
+          ? currentDefenders[0]
+          : currentAttackers[currentAttackerIndex + 1];
         if (!defender) break; // No defender to fight against
 
         const result = this.fight1v1(currentAttacker, defender);
@@ -182,7 +197,13 @@ export class CombatService {
           survivors.push(currentAttacker);
           casualties.push(result.loser);
           // Remove the defeated defender
-          currentAttackers = currentAttackers.filter((a) => a !== defender);
+          if (currentDefenders) {
+            currentDefenders = currentDefenders.filter((d) => d !== defender);
+            remainingDefenders = currentDefenders.length;
+          } else {
+            currentAttackers = currentAttackers.filter((a) => a !== defender);
+            remainingDefenders--;
+          }
         } else {
           // Attacker lost
           console.log(
@@ -193,7 +214,9 @@ export class CombatService {
           currentAttackers = currentAttackers.filter(
             (a) => a !== currentAttacker
           );
-          survivors.push(defender);
+          if (currentDefenders) {
+            survivors.push(defender);
+          }
         }
       }
 
@@ -205,6 +228,16 @@ export class CombatService {
           currentAttackerIndex = 0;
         }
       }
+    }
+
+    // Add any remaining attackers who didn't need to fight as survivors
+    if (remainingDefenders === 0) {
+      currentAttackers.forEach((attacker) => {
+        if (!survivors.includes(attacker)) {
+          console.log(`    ✨ ${attacker.name} survived without fighting`);
+          survivors.push(attacker);
+        }
+      });
     }
 
     console.log("\n  📊 Combat Results:");
@@ -288,7 +321,7 @@ export class CombatService {
           // Fight between two hostile crews
           const fightResult = this.teamCombat(
             hostileWinners[i],
-            hostileWinners[i + 1].length,
+            hostileWinners[i + 1],
             false
           );
 
@@ -325,10 +358,11 @@ export class CombatService {
         );
 
         // Final fight: Surviving hostile crew vs successful heist crew
+        // Now we pass the actual crew members to fight against each other
         const finalFight = this.teamCombat(
-          hostileWinners[0],
-          guardCombatResult.winners.length,
-          false
+          hostileWinners[0], // Tournament winners
+          guardCombatResult.winners, // Actual heist survivors
+          false // Not guards, actual crew members will fight
         );
 
         console.log("\n🏆 Final Results:");
