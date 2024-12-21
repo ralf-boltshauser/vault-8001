@@ -1,6 +1,7 @@
 import {
   Attack,
   AttackOutcome,
+  AttackType,
   CrewMember,
   TurnReport,
 } from "../types/game.types";
@@ -36,10 +37,48 @@ export class ReportService {
     lootPerMember: number
   ): string {
     if (attack.outcome === AttackOutcome.Success) {
+      const heistDetails = this.generateHeistDetails(attack);
       return `Successfully robbed ${
         attack.bank.name
-      } and brought home $${lootPerMember.toLocaleString()}.`;
+      } and brought home $${lootPerMember.toLocaleString()}. ${heistDetails}`;
     }
     return `Failed to rob ${attack.bank.name}.`;
+  }
+
+  private generateHeistDetails(attack: Attack): string {
+    const coopCrews = attack.attackingCrews.filter(
+      (ac) => ac.type === AttackType.Cooperative
+    );
+    const hostileCrews = attack.attackingCrews.filter(
+      (ac) => ac.type === AttackType.Hostile
+    );
+
+    const parts: string[] = [];
+
+    if (coopCrews.length > 0) {
+      const coopDetails = coopCrews
+        .map(
+          (ac) =>
+            `${ac.crew.name} with ${ac.crewMembers.length} crew member${
+              ac.crewMembers.length > 1 ? "s" : ""
+            }`
+        )
+        .join(", ");
+      parts.push(`Cooperative crews: ${coopDetails}`);
+    }
+
+    if (hostileCrews.length > 0) {
+      const hostileDetails = hostileCrews
+        .map(
+          (ac) =>
+            `${ac.crew.name} with ${ac.crewMembers.length} crew member${
+              ac.crewMembers.length > 1 ? "s" : ""
+            }`
+        )
+        .join(", ");
+      parts.push(`Hostile crews: ${hostileDetails}`);
+    }
+
+    return parts.join(". ");
   }
 }
