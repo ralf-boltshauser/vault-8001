@@ -64,13 +64,13 @@ export class GameService {
     const crew = this.gameState.getCrew(crewId);
     if (!crew) return;
 
-    // Verify all crew members have actions assigned
-    const allMembersHaveActions = crew.crewMembers.every(
-      (member) => member.plannedAction || member.action !== Action.None
-    );
+    // Verify all HEALTHY crew members have actions assigned
+    const allHealthyMembersHaveActions = crew.crewMembers
+      .filter((member) => member.status === CrewMemberStatus.Healthy)
+      .every((member) => member.plannedAction || member.action !== Action.None);
 
-    if (!allMembersHaveActions) {
-      throw new Error("All crew members must have actions assigned");
+    if (!allHealthyMembersHaveActions) {
+      throw new Error("All healthy crew members must have actions assigned");
     }
 
     crew.isReadyForNextPhase = true;

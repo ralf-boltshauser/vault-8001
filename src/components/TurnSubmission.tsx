@@ -1,12 +1,17 @@
 import { useWebSocket } from "../contexts/WebSocketContext";
-import { Action, GamePhase, PerkType } from "../game/types/game.types";
+import {
+  Action,
+  CrewMemberStatus,
+  GamePhase,
+  PerkType,
+} from "../game/types/game.types";
 
 export function TurnSubmission() {
   const { gameState, playerCrew, submitTurn } = useWebSocket();
 
-  const canSubmitTurn = playerCrew?.crewMembers.every(
-    (member) => member.action !== Action.None || member.plannedAction
-  );
+  const canSubmitTurn = playerCrew?.crewMembers
+    .filter((m) => m.status == CrewMemberStatus.Healthy)
+    .every((member) => member.action !== Action.None || member.plannedAction);
 
   const isReadyForNextPhase = playerCrew?.isReadyForNextPhase;
 

@@ -1,4 +1,4 @@
-import { CrewMember, PerkType } from "../types/game.types";
+import { Action, CrewMember, PerkType } from "../types/game.types";
 
 export interface BaseCombatantResult {
   eliminated: boolean;
@@ -65,11 +65,21 @@ export class CombatService {
     return baseChance;
   }
 
-  private processCasualty(loser: CrewMember): CrewCombatantResult {
-    const died = Math.random() < 0.3; // 30% chance of dying
-    const jailed = !died; // If they didn't die, they're jailed
+  private processCasualty(
+    loser: CrewMember,
+    isGuardFight: boolean = true
+  ): CrewCombatantResult {
+    // In crew vs crew combat, losers always die
+    const died = !isGuardFight || Math.random() < 0.3; // Always die in crew vs crew, 30% chance vs guards
+    const jailed = isGuardFight && !died; // Can only be jailed in guard fights
     const hasGunPerk = loser.perks.some((p) => p.type === PerkType.Gun);
-    const jailTerm = hasGunPerk ? 5 : 3; // 5 days with gun, 3 days without
+    const jailTerm = jailed ? (hasGunPerk ? 5 : 3) : 0; // Jail terms only matter if jailed
+
+    // Clear actions if jailed
+    if (jailed) {
+      loser.action = Action.None;
+      loser.plannedAction = undefined;
+    }
 
     return {
       type: "crew",
@@ -85,6 +95,7 @@ export class CombatService {
     attacker: CrewMember,
     defender: CrewMember | null
   ): CombatResult {
+    const isGuardFight = defender === null;
     const winProbability = this.calculateWinProbability(attacker, defender);
     const attackerWins = Math.random() < winProbability;
 
@@ -92,7 +103,7 @@ export class CombatService {
       return {
         winner: attacker,
         loser: defender
-          ? this.processCasualty(defender)
+          ? this.processCasualty(defender, false) // Crew vs Crew
           : {
               type: "guard",
               combatant: null,
@@ -105,7 +116,7 @@ export class CombatService {
     } else {
       return {
         winner: defender,
-        loser: this.processCasualty(attacker),
+        loser: this.processCasualty(attacker, isGuardFight),
       };
     }
   }
@@ -194,7 +205,7 @@ export class CombatService {
           console.log(
             `    ✅ ${currentAttacker.name} won against ${defender.name}!`
           );
-          survivors.push(currentAttacker);
+          // Don't add to survivors yet - they might still die in a later fight
           casualties.push(result.loser);
           // Remove the defeated defender
           if (currentDefenders) {
@@ -215,7 +226,7 @@ export class CombatService {
             (a) => a !== currentAttacker
           );
           if (currentDefenders) {
-            survivors.push(defender);
+            // Don't add defender to survivors yet - they might still die in a later fight
           }
         }
       }
@@ -230,14 +241,23 @@ export class CombatService {
       }
     }
 
-    // Add any remaining attackers who didn't need to fight as survivors
-    if (remainingDefenders === 0) {
-      currentAttackers.forEach((attacker) => {
-        if (!survivors.includes(attacker)) {
-          console.log(`    ✨ ${attacker.name} survived without fighting`);
-          survivors.push(attacker);
-        }
-      });
+    // Add survivors at the end of combat
+    if (!isGuards) {
+      // In crew vs crew, survivors are those still in the fight at the end
+      if (currentDefenders) {
+        survivors.push(...currentDefenders);
+      }
+      survivors.push(...currentAttackers);
+    } else {
+      // For guard fights, add any remaining attackers who didn't need to fight
+      if (remainingDefenders === 0) {
+        currentAttackers.forEach((attacker) => {
+          if (!survivors.includes(attacker)) {
+            console.log(`    ✨ ${attacker.name} survived without fighting`);
+            survivors.push(attacker);
+          }
+        });
+      }
     }
 
     console.log("\n  📊 Combat Results:");
@@ -261,6 +281,16 @@ export class CombatService {
     };
   }
 
+  private shuffleArray<T>(array: T[]): T[] {
+    // Fisher-Yates shuffle algorithm
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
   public multiCrewCombat(
     coopCrews: CrewMember[][],
     hostileCrews: CrewMember[][],
@@ -271,10 +301,10 @@ export class CombatService {
     console.log(`  Cooperative crews: ${coopCrews.length}`);
     console.log(`  Hostile crews: ${hostileCrews.length}`);
 
-    // First, combine all coop crews into one team
-    const combinedCoopCrew = coopCrews.flat();
+    // First, combine all coop crews into one team and shuffle them
+    const combinedCoopCrew = this.shuffleArray(coopCrews.flat());
     console.log(
-      `\n👥 Combined cooperative crew: ${combinedCoopCrew
+      `\n👥 Combined cooperative crew (randomly ordered): ${combinedCoopCrew
         .map((m) => m.name)
         .join(", ")}`
     );
@@ -371,6 +401,7 @@ export class CombatService {
         );
         console.log(
           `  Total Casualties: ${[
+            ...guardCombatResult.casualties,
             ...hostileCasualties,
             ...finalFight.casualties,
           ]
@@ -381,7 +412,11 @@ export class CombatService {
 
         return {
           winners: finalFight.winners,
-          casualties: [...hostileCasualties, ...finalFight.casualties],
+          casualties: [
+            ...guardCombatResult.casualties,
+            ...hostileCasualties,
+            ...finalFight.casualties,
+          ],
           remainingDefenders: finalFight.remainingDefenders,
         };
       }
@@ -390,12 +425,12 @@ export class CombatService {
       // If no hostile crews survived their tournament
       return {
         winners: guardCombatResult.winners,
-        casualties: hostileCasualties,
+        casualties: [...guardCombatResult.casualties, ...hostileCasualties],
         remainingDefenders: 0,
       };
     }
 
-    // If no hostile crews, return guard combat result
+    // If no hostile crews, return guard combat result with its casualties
     return guardCombatResult;
   }
 }
