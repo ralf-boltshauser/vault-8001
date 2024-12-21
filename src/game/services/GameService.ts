@@ -19,13 +19,14 @@ import {
 } from "../types/game.types.js";
 import { generateId } from "../utils/helpers.js";
 import { CombatService } from "./CombatService";
+import { ReportService } from "./ReportService";
 
 interface PlayerConnection {
   ws: WebSocket;
   crewId: string;
 }
 
-const CREW_MEMBER_COST = 50000;
+const CREW_MEMBER_COST = 10000;
 const CREW_NAMES = [
   "Shadow",
   "Ghost",
@@ -45,10 +46,12 @@ export class GameService {
   private playerConnections: Map<string, PlayerConnection> = new Map();
   private disconnectedPlayers: Set<string> = new Set();
   private combatService: CombatService;
+  private reportService: ReportService;
 
   private constructor() {
     this.gameState = GameState.getInstance();
     this.combatService = new CombatService();
+    this.reportService = new ReportService();
     this.initializeBanks();
   }
 
@@ -187,16 +190,9 @@ export class GameService {
       },
     };
 
-    // Replace or initialize turn reports
+    // Add to turn reports
     crew.turnReports = crew.turnReports || [];
-    const existingReportIndex = crew.turnReports.findIndex(
-      (r) => r.crewMemberId === member.id
-    );
-    if (existingReportIndex >= 0) {
-      crew.turnReports[existingReportIndex] = report;
-    } else {
-      crew.turnReports.push(report);
-    }
+    crew.turnReports.push(report);
 
     // Update crew in game state
     this.gameState.updateCrew(crew);
@@ -209,62 +205,43 @@ export class GameService {
   }
 
   private generateReports(attack: Attack): void {
-    attack.attackingCrews.forEach((attackingCrew) => {
-      const crew = this.gameState.getCrew(attackingCrew.crew.id);
-      if (!crew) return;
+    // Only generate reports for successful heists
+    console.log("Generating reports for attack:", attack);
+    if (attack.outcome === AttackOutcome.Success) {
+      // Calculate loot per member
 
-      // Generate new reports for this turn
-      const reports: TurnReport[] = attackingCrew.crewMembers.map((member) => {
-        const collaborators = attackingCrew.crewMembers
-          .filter((m) => m.id !== member.id)
-          .map((m) => m.name);
+      const lootPerMember =
+        attack.loot?.amount && attack.winners?.length
+          ? Math.floor(attack.loot.amount / attack.winners.length)
+          : 0;
 
-        return {
-          crewMemberId: member.id,
-          message: this.generateReportMessage(attack, member, collaborators),
-          details: {
-            location: attack.bank.name,
-            collaborators: collaborators,
-            outcome: attack.outcome,
-            earnings: attack.loot?.amount
-              ? Math.floor(
-                  attack.loot.amount / attackingCrew.crewMembers.length
-                )
-              : 0,
-          },
-        };
+      attack.attackingCrews.forEach((attackingCrew) => {
+        const crew = this.gameState.getCrew(attackingCrew.crew.id);
+        if (!crew) return;
+
+        // Find survivors from this crew
+        const survivors =
+          attack.winners?.filter((winner: CrewMember) =>
+            attackingCrew.crewMembers.some((member) => member.id === winner.id)
+          ) || [];
+
+        // Generate reports only for survivors
+        const reports = this.reportService.generateHeistReports(
+          attack,
+          survivors,
+          lootPerMember
+        );
+
+        // Add to existing reports instead of replacing
+        crew.turnReports = crew.turnReports || [];
+        crew.turnReports.push(...reports);
+
+        console.log(
+          `💰 ${crew.name} earned ${lootPerMember} from the heist at ${attack.bank.name}`
+        );
+        this.gameState.updateCrew(crew);
       });
-
-      // Replace old reports with new ones
-      crew.turnReports = reports;
-      this.gameState.updateCrew(crew);
-    });
-  }
-
-  private generateReportMessage(
-    attack: Attack,
-    member: CrewMember,
-    collaborators: string[]
-  ): string {
-    const collaboratorText =
-      collaborators.length > 0
-        ? ` together with ${collaborators.join(", ")}`
-        : " alone";
-
-    const outcomeText =
-      attack.outcome === AttackOutcome.Success
-        ? "successfully"
-        : attack.outcome === AttackOutcome.Partial
-        ? "partially succeeded in"
-        : "failed in";
-
-    const lootText = attack.loot?.amount
-      ? ` We secured $${Math.floor(
-          attack.loot.amount / attack.attackingCrews[0].crewMembers.length
-        ).toLocaleString()}.`
-      : "";
-
-    return `I attacked ${attack.bank.name}${collaboratorText} and ${outcomeText} the heist.${lootText}`;
+    }
   }
 
   private prepareNextTurn(): void {
@@ -283,14 +260,13 @@ export class GameService {
             member.status = CrewMemberStatus.Healthy;
             member.jailTerm = undefined;
 
-            // Generate release report
-            const report: TurnReport = {
+            // Add to existing reports instead of replacing
+            crew.turnReports = crew.turnReports || [];
+            crew.turnReports.push({
               crewMemberId: member.id,
               message: `${member.name} has been released from jail and is ready for action.`,
               details: {},
-            };
-            crew.turnReports = crew.turnReports || [];
-            crew.turnReports.push(report);
+            });
           }
         }
 
@@ -466,6 +442,9 @@ export class GameService {
       hostileCrews,
       attack.bank.guardsCurrent
     );
+
+    // Store winners in attack object
+    attack.winners = combatResult.winners;
 
     // Process casualties
     combatResult.casualties.forEach((casualty) => {

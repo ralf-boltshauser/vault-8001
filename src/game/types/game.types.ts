@@ -163,6 +163,7 @@ export interface Attack {
   outcome?: AttackOutcome;
   loot?: Loot;
   casualties?: Casualties;
+  winners?: CrewMember[];
   timestamp: number;
 }
 
