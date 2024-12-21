@@ -14,7 +14,7 @@ export class ReportService {
   ): TurnReport[] {
     const reports: TurnReport[] = [];
 
-    // Only survivors can write reports
+    // Generate reports for survivors
     survivors.forEach((survivor) => {
       const report: TurnReport = {
         crewMemberId: survivor.id,
@@ -30,6 +30,52 @@ export class ReportService {
     });
 
     return reports;
+  }
+
+  public generateHostileReports(attack: Attack): TurnReport[] {
+    const reports: TurnReport[] = [];
+
+    const hostileCrews = attack.attackingCrews.filter(
+      (ac) => ac.type === AttackType.Hostile
+    );
+
+    if (hostileCrews.length > 0) {
+      hostileCrews.forEach((hostileCrew) => {
+        hostileCrew.crewMembers.forEach((member) => {
+          const report: TurnReport = {
+            crewMemberId: member.id,
+            message: this.generateHostileMessage(attack),
+            details: {
+              location: attack.bank.name,
+              outcome: attack.outcome,
+            },
+          };
+          reports.push(report);
+        });
+      });
+    }
+
+    return reports;
+  }
+
+  private generateHostileMessage(attack: Attack): string {
+    const coopCrewDetails = attack.attackingCrews
+      .filter((ac) => ac.type === AttackType.Cooperative)
+      .map(
+        (ac) => `${ac.crew.name} (${ac.crewMembers.length} cooperative members)`
+      )
+      .join(", ");
+
+    const hostileCrewDetails = attack.attackingCrews
+      .filter((ac) => ac.type === AttackType.Hostile)
+      .map((ac) => `${ac.crew.name} (${ac.crewMembers.length} hostile members)`)
+      .join(", ");
+
+    return `Arrived at ${
+      attack.bank.name
+    } with ${hostileCrewDetails} but found no survivors from the heist crew${
+      coopCrewDetails ? ` ${coopCrewDetails}` : ""
+    } to fight.`;
   }
 
   public generatePhoneReport(

@@ -205,11 +205,8 @@ export class GameService {
   }
 
   private generateReports(attack: Attack): void {
-    // Only generate reports for successful heists
-    console.log("Generating reports for attack:", attack);
+    // Generate reports for successful heist survivors
     if (attack.outcome === AttackOutcome.Success) {
-      // Calculate loot per member
-
       const lootPerMember =
         attack.loot?.amount && attack.winners?.length
           ? Math.floor(attack.loot.amount / attack.winners.length)
@@ -236,12 +233,31 @@ export class GameService {
         crew.turnReports = crew.turnReports || [];
         crew.turnReports.push(...reports);
 
-        console.log(
-          `💰 ${crew.name} earned ${lootPerMember} from the heist at ${attack.bank.name}`
-        );
         this.gameState.updateCrew(crew);
       });
     }
+
+    // Generate reports for surviving hostile crew members
+    const hostileCrews = attack.attackingCrews.filter(
+      (ac) => ac.type === AttackType.Hostile
+    );
+    hostileCrews.forEach((hostileCrew) => {
+      const crew = this.gameState.getCrew(hostileCrew.crew.id);
+      if (!crew) return;
+
+      // Find survivors from this hostile crew
+      const survivors = hostileCrew.crewMembers;
+
+      // Only generate reports if there were survivors
+      if (survivors.length > 0) {
+        const reports = this.reportService.generateHostileReports(attack);
+
+        crew.turnReports = crew.turnReports || [];
+        crew.turnReports.push(...reports);
+
+        this.gameState.updateCrew(crew);
+      }
+    });
   }
 
   private prepareNextTurn(): void {
