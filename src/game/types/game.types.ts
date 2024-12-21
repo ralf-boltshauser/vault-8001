@@ -92,6 +92,7 @@ export interface CrewMember {
   action: Action;
   status: CrewMemberStatus;
   plannedAction?: PlannedAction;
+  jailTerm?: number;
 }
 
 export interface TurnReport {
