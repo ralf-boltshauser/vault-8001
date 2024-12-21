@@ -1,5 +1,5 @@
 import { useWebSocket } from "../contexts/WebSocketContext";
-import { Action, GamePhase } from "../game/types/game.types";
+import { Action, GamePhase, PerkType } from "../game/types/game.types";
 
 export function TurnSubmission() {
   const { gameState, playerCrew, submitTurn } = useWebSocket();
@@ -29,9 +29,7 @@ export function TurnSubmission() {
               className={`font-medium ${
                 gameState.phase === GamePhase.Planning
                   ? "text-blue-400"
-                  : gameState.phase === GamePhase.Resolution
-                  ? "text-yellow-400"
-                  : "text-green-400"
+                  : "text-yellow-400"
               }`}
             >
               {gameState.phase}
@@ -62,32 +60,49 @@ export function TurnSubmission() {
           </div>
         )}
 
-        {gameState.phase === GamePhase.Report && playerCrew.turnReports && (
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-white">Turn Reports</h3>
-            {playerCrew.turnReports.map((report, index) => {
-              const member = playerCrew.crewMembers.find(
-                (m) => m.id === report.crewMemberId
-              );
-              return (
-                <div
-                  key={index}
-                  className="bg-gray-700 p-3 rounded text-gray-300"
-                >
-                  <span className="font-medium text-white">
-                    {member?.name}:{" "}
-                  </span>
-                  {report.message}
-                  {report.details.earnings > 0 && (
-                    <div className="text-green-400 mt-1">
-                      Earned: ${report.details.earnings.toLocaleString()}
+        {gameState.phase === GamePhase.Planning &&
+          playerCrew.turnReports &&
+          playerCrew.turnReports.length > 0 && (
+            <div className="space-y-2 mt-4">
+              <h3 className="text-lg font-semibold text-white">
+                Last Turn Reports
+              </h3>
+              {playerCrew.turnReports.map((report, index) => {
+                const member = playerCrew.crewMembers.find(
+                  (m) => m.id === report.crewMemberId
+                );
+                const hasPhone = member?.perks.some(
+                  (p) => p.type === PerkType.Phone
+                );
+
+                return (
+                  <div
+                    key={index}
+                    className="bg-gray-700 p-3 rounded text-gray-300"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white">
+                        {member?.name}
+                      </span>
+                      {hasPhone && (
+                        <span className="material-icons text-blue-400 text-sm">
+                          smartphone
+                        </span>
+                      )}
+                      <span>: </span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+                    <div className="mt-1">{report.message}</div>
+                    {report.details.earnings !== undefined &&
+                      report.details.earnings > 0 && (
+                        <div className="text-green-400 mt-1">
+                          Earned: ${report.details.earnings.toLocaleString()}
+                        </div>
+                      )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
       </div>
     </div>
   );

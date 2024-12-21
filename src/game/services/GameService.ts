@@ -1,12 +1,16 @@
 import { WebSocket } from "ws";
+import { calculateWorkSalary } from "../config/gameConfig";
 import { GameState } from "../models/GameState.js";
 import {
   Action,
   Attack,
+  AttackingCrew,
   AttackOutcome,
   AttackType,
-  AttackingCrew,
   Bank,
+  CombatOutcome,
+  CombatPhase,
+  CombatResult,
   Crew,
   CrewMember,
   CrewMemberStatus,
@@ -102,10 +106,40 @@ export class GameService {
     const crews = this.gameState.getAllCrews();
     const bankAttacks = new Map<string, CrewMember[]>(); // bankId -> attackers
 
-    // Group all attacks by bank
+    // Clear all reports at the start of resolution
+    crews.forEach((crew) => {
+      crew.turnReports = [];
+      this.gameState.updateCrew(crew);
+    });
+
+    // Handle basic income for crews with no healthy members
+    crews.forEach((crew) => {
+      const healthyMembers = crew.crewMembers.filter(
+        (member) => member.status === CrewMemberStatus.Healthy
+      );
+
+      if (healthyMembers.length === 0) {
+        crew.capital += 10000; // Basic income for having no healthy crew
+        crew.turnReports = [
+          {
+            crewMemberId: "system",
+            message:
+              "With no healthy crew members to manage, you earned basic income from regular work.",
+            details: {
+              earnings: 10000,
+            },
+          },
+        ];
+        this.gameState.updateCrew(crew);
+      }
+    });
+
+    // First, handle all work actions
     crews.forEach((crew) => {
       crew.crewMembers.forEach((member) => {
-        if (
+        if (member.plannedAction?.type === Action.Work) {
+          this.resolveWorkAction(crew, member);
+        } else if (
           member.plannedAction?.type === Action.Attack &&
           member.plannedAction.targetId
         ) {
@@ -117,15 +151,12 @@ export class GameService {
       });
     });
 
-    // Resolve each bank attack
+    // Then handle bank attacks
     bankAttacks.forEach((attackers, bankId) => {
       const bank = this.gameState.getBank(bankId);
       if (!bank) return;
 
-      // Group attackers by crew and collaboration
       const attackGroups = this.groupAttackers(attackers);
-
-      // Resolve each attack group
       attackGroups.forEach((group) => {
         const attack = this.createAttack(bank, group);
         const result = this.executeAttack(attack);
@@ -135,6 +166,37 @@ export class GameService {
 
     // Reset for next turn
     this.prepareNextTurn();
+  }
+
+  private resolveWorkAction(crew: Crew, member: CrewMember): void {
+    // Calculate earnings based on perks and random variance
+    const earnings = calculateWorkSalary(member.perks.map((p) => p.type));
+
+    // Update crew's capital
+    crew.capital += earnings;
+
+    // Generate work report
+    const report: TurnReport = {
+      crewMemberId: member.id,
+      message: `I worked a regular job and earned some money.`,
+      details: {
+        earnings,
+      },
+    };
+
+    // Replace or initialize turn reports
+    crew.turnReports = crew.turnReports || [];
+    const existingReportIndex = crew.turnReports.findIndex(
+      (r) => r.crewMemberId === member.id
+    );
+    if (existingReportIndex >= 0) {
+      crew.turnReports[existingReportIndex] = report;
+    } else {
+      crew.turnReports.push(report);
+    }
+
+    // Update crew in game state
+    this.gameState.updateCrew(crew);
   }
 
   private groupAttackers(attackers: CrewMember[]): CrewMember[][] {
@@ -162,6 +224,7 @@ export class GameService {
       const crew = this.gameState.getCrew(attackingCrew.crew.id);
       if (!crew) return;
 
+      // Generate new reports for this turn
       const reports: TurnReport[] = attackingCrew.crewMembers.map((member) => {
         const collaborators = attackingCrew.crewMembers
           .filter((m) => m.id !== member.id)
@@ -183,6 +246,7 @@ export class GameService {
         };
       });
 
+      // Replace old reports with new ones
       crew.turnReports = reports;
       this.gameState.updateCrew(crew);
     });
@@ -218,21 +282,24 @@ export class GameService {
     // Reset crew ready states
     this.gameState.getAllCrews().forEach((crew) => {
       crew.isReadyForNextPhase = false;
+
       crew.crewMembers.forEach((member) => {
-        member.plannedAction = undefined;
+        if (member.plannedAction) {
+          // Keep the previous action as the default for next turn
+          const previousAction = member.plannedAction;
+          member.plannedAction = undefined;
+          // Set up the same action for next turn
+          this.assignAction(crew.id, member.id, previousAction);
+        }
       });
+
       this.gameState.updateCrew(crew);
     });
 
-    this.gameState.setPhase(GamePhase.Report);
+    // Move directly to next planning phase
+    this.gameState.setPhase(GamePhase.Planning);
+    this.gameState.setTurnNumber(this.gameState.getTurnNumber() + 1);
     this.broadcastGameState();
-
-    // After a delay, move to next planning phase
-    setTimeout(() => {
-      this.gameState.setPhase(GamePhase.Planning);
-      this.gameState.setTurnNumber(this.gameState.getTurnNumber() + 1);
-      this.broadcastGameState();
-    }, 10000); // 10 seconds to read reports
   }
 
   private generateRandomName(): string {
@@ -374,74 +441,264 @@ export class GameService {
   }
 
   executeAttack(attack: Attack): Attack {
-    // Calculate attack power based on number of crew members and their perks
-    const totalAttackPower = attack.attackingCrews.reduce(
-      (power: number, attackingCrew: AttackingCrew) => {
-        return (
-          power +
-          attackingCrew.crewMembers.reduce(
-            (memberPower: number, member: CrewMember) => {
-              // Base power per member
-              let memberTotal = 10;
-              // Add power from perks
-              member.perks.forEach((perk) => {
-                memberTotal += perk.power;
-              });
-              return memberPower + memberTotal;
-            },
-            0
-          )
-        );
-      },
-      0
+    let remainingAttackers: CrewMember[] = [];
+    const allAttackers = attack.attackingCrews.flatMap((ac) => ac.crewMembers);
+
+    // First, resolve crew vs crew combat if there are hostile crews
+    const hostileCrews = attack.attackingCrews.filter(
+      (ac) => ac.type === AttackType.Hostile
+    );
+    const cooperativeCrews = attack.attackingCrews.filter(
+      (ac) => ac.type === AttackType.Cooperative
     );
 
-    const defenseStrength =
-      attack.bank.guardsCurrent * 10 + attack.bank.securityFeatures.length * 5;
-    const successRate = calculateSuccess(totalAttackPower, defenseStrength);
-
-    if (successRate >= 70) {
-      attack.outcome = AttackOutcome.Success;
-      attack.loot = {
-        type: "money",
-        amount: Math.floor(attack.bank.lootPotential * (successRate / 100)),
-      };
-    } else if (successRate >= 30) {
-      attack.outcome = AttackOutcome.Partial;
-      attack.loot = {
-        type: "money",
-        amount: Math.floor(attack.bank.lootPotential * (successRate / 200)),
-      };
+    if (hostileCrews.length > 0) {
+      // If all crews are hostile, they fight each other first
+      if (cooperativeCrews.length === 0) {
+        const combatResult = this.executeCombat(
+          hostileCrews[0].crewMembers,
+          hostileCrews.slice(1).flatMap((c) => c.crewMembers)
+        );
+        remainingAttackers = combatResult.survivors;
+        this.processCasualties(combatResult);
+      } else {
+        // Let cooperative crews attempt the heist first
+        const bankResult = this.executeBankHeist(
+          attack.bank,
+          cooperativeCrews.flatMap((c) => c.crewMembers)
+        );
+        if (
+          bankResult.outcome === AttackOutcome.Success ||
+          bankResult.outcome === AttackOutcome.Partial
+        ) {
+          // Hostile crews attack the returning successful crews
+          const combatResult = this.executeCombat(
+            hostileCrews.flatMap((c) => c.crewMembers),
+            bankResult.survivors
+          );
+          remainingAttackers = combatResult.survivors;
+          this.processCasualties(combatResult);
+          attack.outcome =
+            combatResult.outcome === CombatOutcome.Victory
+              ? AttackOutcome.Success
+              : AttackOutcome.Failure;
+        }
+      }
     } else {
-      attack.outcome = AttackOutcome.Failure;
+      // All crews are cooperative, they work together
+      const bankResult = this.executeBankHeist(attack.bank, allAttackers);
+      remainingAttackers = bankResult.survivors;
+      attack.outcome = bankResult.outcome;
     }
 
-    this.applyAttackOutcome(attack);
+    // Calculate and distribute loot if any survivors
+    if (
+      remainingAttackers.length > 0 &&
+      attack.outcome === AttackOutcome.Success
+    ) {
+      const lootPerMember = Math.floor(
+        attack.bank.lootPotential / remainingAttackers.length
+      );
+      attack.loot = {
+        type: "money",
+        amount: lootPerMember * remainingAttackers.length,
+      };
+
+      // Distribute loot to surviving crews
+      remainingAttackers.forEach((survivor) => {
+        const crew = this.findCrewByMemberId(survivor.id);
+        if (crew) {
+          crew.capital += lootPerMember;
+          this.gameState.updateCrew(crew);
+        }
+      });
+    }
+
     return attack;
   }
 
-  private applyAttackOutcome(attack: Attack): void {
-    const bank = attack.bank;
-    bank.attackHistory.push(attack);
+  private executeBankHeist(
+    bank: Bank,
+    attackers: CrewMember[]
+  ): { outcome: AttackOutcome; survivors: CrewMember[] } {
+    const totalAttackPower = attackers.reduce((power, member) => {
+      let memberPower = 10; // Base power
+      member.perks.forEach((perk) => {
+        memberPower += perk.power;
+      });
+      return power + memberPower;
+    }, 0);
 
-    attack.attackingCrews.forEach((attackingCrew: AttackingCrew) => {
-      const crew = this.gameState.getCrew(attackingCrew.crew.id);
-      if (!crew) return;
+    const defenseStrength =
+      bank.guardsCurrent * 10 + bank.securityFeatures.length * 5;
+    const successRate = calculateSuccess(totalAttackPower, defenseStrength);
 
-      if (attack.outcome === AttackOutcome.Success) {
-        crew.capital += attack.loot?.amount || 0;
-        crew.reputation += 10;
-      } else if (attack.outcome === AttackOutcome.Partial) {
-        crew.capital += attack.loot?.amount || 0;
-        crew.reputation += 5;
-      } else {
-        crew.reputation -= 5;
-      }
-
-      this.gameState.updateCrew(crew);
+    // Process casualties based on bank defense
+    const survivors = attackers.filter((member) => {
+      const baseChance = successRate / 100;
+      const gunBonus = member.perks.some((p) => p.type === PerkType.Gun)
+        ? 0.2
+        : 0;
+      const survivalChance = Math.min(0.95, baseChance + gunBonus); // Cap at 95% chance
+      return Math.random() < survivalChance;
     });
 
-    this.gameState.updateBank(bank);
+    return {
+      outcome:
+        successRate >= 70
+          ? AttackOutcome.Success
+          : successRate >= 30
+          ? AttackOutcome.Partial
+          : AttackOutcome.Failure,
+      survivors,
+    };
+  }
+
+  private processCasualties(combatResult: CombatResult): void {
+    combatResult.casualties.forEach((casualty) => {
+      const crew = this.findCrewByMemberId(casualty.id);
+      if (!crew) return;
+
+      // Mark the casualty as dead instead of removing them
+      const member = crew.crewMembers.find((m) => m.id === casualty.id);
+      if (member) {
+        member.status = CrewMemberStatus.Dead;
+      }
+
+      // Generate death report
+      const hasPhone = casualty.perks.some((p) => p.type === PerkType.Phone);
+      const lastWords = hasPhone ? this.generateLastWords(casualty) : undefined;
+
+      const report: TurnReport = {
+        crewMemberId: casualty.id,
+        message:
+          hasPhone && lastWords
+            ? lastWords
+            : `${casualty.name} was lost during the operation.`,
+        details: {
+          causeOfDeath: this.generateCauseOfDeath(combatResult.phase),
+          lastWords: lastWords,
+        },
+      };
+
+      crew.turnReports = crew.turnReports || [];
+      crew.turnReports.push(report);
+      this.gameState.updateCrew(crew);
+    });
+  }
+
+  private generateLastWords(casualty: CrewMember): string {
+    const lastWords = [
+      `*Final transmission from ${casualty.name}* Boss, it's been an honor serving in your crew. No regrets...`,
+      `*${casualty.name}'s last message* Tell the others... our legacy lives on... make them proud...`,
+      `*Static crackles* The money's hidden in... *cough* ...worth every penny... *transmission ends*`,
+      `*${casualty.name}'s dying words* They got me good, but I took some of them with me. Went down fighting...`,
+      `*Last radio message* Keep hitting them where it hurts, crew... ${casualty.name} signing off forever...`,
+    ];
+    return lastWords[Math.floor(Math.random() * lastWords.length)];
+  }
+
+  private generateCauseOfDeath(phase: CombatPhase): string {
+    switch (phase) {
+      case CombatPhase.CrewVsCrew:
+        return "Killed in crew combat";
+      case CombatPhase.CrewVsBank:
+        return "Lost during bank heist";
+      case CombatPhase.CrewVsLoot:
+        return "Killed defending the loot";
+      default:
+        return "Unknown circumstances";
+    }
+  }
+
+  private generateCombatDetails(
+    outcome: CombatOutcome,
+    casualties: CrewMember[],
+    survivors: CrewMember[]
+  ): string {
+    const casualtyCount = casualties.length;
+    const survivorCount = survivors.length;
+
+    switch (outcome) {
+      case CombatOutcome.Victory:
+        return `Decisive victory with ${casualtyCount} casualties and ${survivorCount} survivors.`;
+      case CombatOutcome.Defeat:
+        return `Devastating defeat with ${casualtyCount} casualties.`;
+      case CombatOutcome.MutualDestruction:
+        return `Brutal combat resulted in heavy casualties on all sides. ${survivorCount} survived.`;
+      default:
+        return "Combat concluded.";
+    }
+  }
+
+  private executeCombat(
+    attackers: CrewMember[],
+    defenders: CrewMember[]
+  ): CombatResult {
+    const calculateTeamPower = (members: CrewMember[]): number => {
+      return members.reduce((power, member) => {
+        let memberPower = 10; // Base power
+        // Gun perk significantly increases combat power
+        const gunPerk = member.perks.find((p) => p.type === PerkType.Gun);
+        if (gunPerk) {
+          memberPower += gunPerk.power * 3; // Triple the gun's power in crew vs crew combat
+        }
+        return power + memberPower;
+      }, 0);
+    };
+
+    const attackerPower = calculateTeamPower(attackers);
+    const defenderPower = calculateTeamPower(defenders);
+
+    // Add some randomness to the combat
+    const randomFactor = 0.8 + Math.random() * 0.4; // Random factor between 0.8 and 1.2
+    const effectiveAttackerPower = attackerPower * randomFactor;
+
+    const casualties: CrewMember[] = [];
+    const survivors: CrewMember[] = [];
+    let outcome: CombatOutcome;
+
+    // Calculate survival chance for each member based on power difference
+    const processCasualties = (members: CrewMember[], isWinning: boolean) => {
+      members.forEach((member) => {
+        const baseChance = isWinning ? 0.8 : 0.3;
+        const gunBonus = member.perks.some((p) => p.type === PerkType.Gun)
+          ? 0.1
+          : 0;
+        const survivalChance = baseChance + gunBonus;
+
+        if (Math.random() > survivalChance) {
+          casualties.push(member);
+        } else {
+          survivors.push(member);
+        }
+      });
+    };
+
+    if (effectiveAttackerPower > defenderPower * 1.2) {
+      // Clear victory for attackers
+      outcome = CombatOutcome.Victory;
+      processCasualties(attackers, true);
+      processCasualties(defenders, false);
+    } else if (defenderPower > effectiveAttackerPower * 1.2) {
+      // Clear victory for defenders
+      outcome = CombatOutcome.Defeat;
+      processCasualties(attackers, false);
+      processCasualties(defenders, true);
+    } else {
+      // Close combat, high casualties on both sides
+      outcome = CombatOutcome.MutualDestruction;
+      processCasualties(attackers, false);
+      processCasualties(defenders, false);
+    }
+
+    return {
+      phase: CombatPhase.CrewVsCrew,
+      outcome,
+      casualties,
+      survivors,
+      details: this.generateCombatDetails(outcome, casualties, survivors),
+    };
   }
 
   private initializeBanks(): void {
@@ -491,32 +748,38 @@ export class GameService {
   }
 
   private createAttack(bank: Bank, members: CrewMember[]): Attack {
-    // Group members by crew
-    const crewMembers = new Map<string, CrewMember[]>();
+    // Group members by crew and their attack types
+    const crewMembers = new Map<
+      string,
+      { members: CrewMember[]; type: AttackType }
+    >();
     members.forEach((member) => {
       const crew = this.findCrewByMemberId(member.id);
       if (!crew) return;
 
       const crewId = crew.id;
-      const members = crewMembers.get(crewId) || [];
-      members.push(member);
-      crewMembers.set(crewId, members);
+      const existing = crewMembers.get(crewId);
+      if (existing) {
+        existing.members.push(member);
+      } else {
+        crewMembers.set(crewId, {
+          members: [member],
+          type: member.plannedAction?.attackType || AttackType.Hostile,
+        });
+      }
     });
 
     // Create attacking crews
     const attackingCrews: AttackingCrew[] = Array.from(
       crewMembers.entries()
-    ).map(([crewId, members]) => {
+    ).map(([crewId, { members, type }]) => {
       const crew = this.gameState.getCrew(crewId);
       if (!crew) throw new Error("Invalid crew");
 
       return {
         crew,
         crewMembers: members,
-        type:
-          members.length === members.length
-            ? AttackType.Cooperative
-            : AttackType.Hostile,
+        type,
         roleAssignments: {},
         strategy: crew.strategy,
       };

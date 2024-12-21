@@ -8,6 +8,7 @@ export enum CrewMemberStatus {
   Healthy = "healthy",
   Injured = "injured",
   Arrested = "arrested",
+  Dead = "dead",
 }
 
 export enum AttackOutcome {
@@ -35,7 +36,18 @@ export enum PerkType {
 export enum GamePhase {
   Planning = "planning",
   Resolution = "resolution",
-  Report = "report",
+}
+
+export enum CombatOutcome {
+  Victory = "victory",
+  Defeat = "defeat",
+  MutualDestruction = "mutualDestruction",
+}
+
+export enum CombatPhase {
+  CrewVsCrew = "crewVsCrew",
+  CrewVsBank = "crewVsBank",
+  CrewVsLoot = "crewVsLoot",
 }
 
 export interface Perk {
@@ -70,6 +82,7 @@ export interface PlannedAction {
   type: Action;
   targetId?: string;
   collaborators?: string[];
+  attackType: AttackType;
 }
 
 export interface CrewMember {
@@ -89,6 +102,8 @@ export interface TurnReport {
     collaborators?: string[];
     outcome?: string;
     earnings?: number;
+    lastWords?: string;
+    causeOfDeath?: string;
   };
 }
 
@@ -155,4 +170,12 @@ export interface GameState {
   crews: Map<string, Crew>;
   banks: Map<string, Bank>;
   turnNumber: number;
+}
+
+export interface CombatResult {
+  phase: CombatPhase;
+  outcome: CombatOutcome;
+  casualties: CrewMember[];
+  survivors: CrewMember[];
+  details: string;
 }

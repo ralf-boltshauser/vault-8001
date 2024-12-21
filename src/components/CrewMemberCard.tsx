@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CrewMember } from "../game/types/game.types";
+import { CrewMember, CrewMemberStatus } from "../game/types/game.types";
 import { ActionManager } from "./ActionManager";
 import { PerkManager } from "./PerkManager";
 
@@ -10,6 +10,9 @@ interface CrewMemberCardProps {
 export function CrewMemberCard({ member }: CrewMemberCardProps) {
   const [showPerks, setShowPerks] = useState(false);
   const [showActions, setShowActions] = useState(false);
+
+  // Don't render card if member is dead
+  if (member.status === CrewMemberStatus.Dead) return null;
 
   return (
     <div className="bg-gray-800 p-4 rounded-lg shadow-lg">

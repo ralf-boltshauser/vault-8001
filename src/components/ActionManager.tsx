@@ -1,102 +1,135 @@
-import { useState } from "react";
 import { useWebSocket } from "../contexts/WebSocketContext";
 import {
   Action,
+  AttackType,
+  Bank,
   CrewMember,
   GamePhase,
-  PlannedAction,
 } from "../game/types/game.types";
 
 interface ActionManagerProps {
   member: CrewMember;
 }
 
+interface BankWithId extends Bank {
+  id: string;
+}
+
 export function ActionManager({ member }: ActionManagerProps) {
-  const { gameState, playerCrew, assignAction } = useWebSocket();
-  const [selectedAction, setSelectedAction] = useState<Action>(member.action);
-  const [selectedBankId, setSelectedBankId] = useState<string>("");
-
-  const banks = gameState?.banks || [];
-
-  const handleAssignAction = () => {
-    const plannedAction: PlannedAction = {
-      type: selectedAction,
-      targetId: selectedAction === Action.Attack ? selectedBankId : undefined,
-    };
-    assignAction(member.id, plannedAction);
-  };
+  const { gameState, assignAction } = useWebSocket();
 
   if (gameState?.phase !== GamePhase.Planning) {
-    return (
-      <div className="text-gray-400 italic">
-        {gameState?.phase === GamePhase.Resolution
-          ? "Actions are being resolved..."
-          : gameState?.phase === GamePhase.Report
-          ? "Reading reports..."
-          : "Waiting for next phase..."}
-      </div>
-    );
+    return null;
   }
 
+  // Convert Map entries to Bank array with IDs
+  const banks: BankWithId[] = gameState
+    ? Array.from(gameState.banks.values()).map(([_, bank]) => bank)
+    : [];
+
+  const handleActionChange = (action: Action) => {
+    if (action === Action.Work) {
+      assignAction(member.id, {
+        type: Action.Work,
+        attackType: AttackType.Hostile, // Default, not used for work
+      });
+    } else if (action === Action.None) {
+      assignAction(member.id, {
+        type: Action.None,
+        attackType: AttackType.Hostile, // Default, not used for none
+      });
+    }
+  };
+
+  const handleAttackSelect = (bankId: string, attackType: AttackType) => {
+    assignAction(member.id, {
+      type: Action.Attack,
+      targetId: bankId,
+      attackType: attackType,
+    });
+  };
+
   return (
-    <div className="space-y-4 mt-4">
-      <div className="flex items-center gap-4">
-        <select
-          value={selectedAction}
-          onChange={(e) => setSelectedAction(e.target.value as Action)}
-          className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value={Action.None}>Select Action</option>
-          <option value={Action.Attack}>Attack Bank</option>
-          <option value={Action.Work}>Work (Earn Money)</option>
-        </select>
-
-        {selectedAction === Action.Attack && (
-          <select
-            value={selectedBankId}
-            onChange={(e) => setSelectedBankId(e.target.value)}
-            className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select Bank</option>
-            {banks.map(([id, bank]) => (
-              <option key={id} value={id}>
-                {bank.name} (${bank.lootPotential.toLocaleString()} potential)
-              </option>
-            ))}
-          </select>
-        )}
-
+    <div className="space-y-4">
+      <div className="flex gap-2">
         <button
-          onClick={handleAssignAction}
-          disabled={
-            selectedAction === Action.None ||
-            (selectedAction === Action.Attack && !selectedBankId)
-          }
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:bg-gray-600 disabled:cursor-not-allowed"
+          onClick={() => handleActionChange(Action.Work)}
+          className={`px-3 py-1 rounded ${
+            member.plannedAction?.type === Action.Work
+              ? "bg-green-600 text-white"
+              : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+          }`}
         >
-          Assign Action
+          Work
+        </button>
+        <button
+          onClick={() => handleActionChange(Action.None)}
+          className={`px-3 py-1 rounded ${
+            !member.plannedAction || member.plannedAction.type === Action.None
+              ? "bg-gray-600 text-white"
+              : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+          }`}
+        >
+          None
         </button>
       </div>
 
-      {member.plannedAction && (
-        <div className="text-gray-300">
-          Planned Action:{" "}
-          <span className="text-white">
-            {member.plannedAction.type}
-            {member.plannedAction.targetId && (
-              <>
-                {" "}
-                -{" "}
-                {
-                  banks.find(
-                    ([id]) => id === member.plannedAction?.targetId
-                  )?.[1].name
-                }
-              </>
-            )}
-          </span>
-        </div>
-      )}
+      <div className="space-y-2">
+        <h4 className="text-sm font-medium text-gray-400">Available Banks:</h4>
+        {banks.map((bank) => {
+          const isAttackingThisBank =
+            member.plannedAction?.type === Action.Attack &&
+            member.plannedAction.targetId === bank.id;
+
+          const isCooperative =
+            isAttackingThisBank &&
+            member.plannedAction?.attackType === AttackType.Cooperative;
+
+          const isHostile =
+            isAttackingThisBank &&
+            member.plannedAction?.attackType === AttackType.Hostile;
+
+          return (
+            <div key={`bank-${bank.id}`} className="flex items-center gap-2">
+              <div className="flex-1">
+                <div className="text-white">{bank.name}</div>
+                <div className="text-sm text-gray-400">
+                  Guards: {bank.guardsCurrent || 0} | Potential: $
+                  {(bank.lootPotential || 0).toLocaleString()}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() =>
+                    handleAttackSelect(bank.id, AttackType.Cooperative)
+                  }
+                  className={`px-3 py-1 rounded ${
+                    isCooperative
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  }`}
+                  title="Work together with other crews"
+                >
+                  Co-op
+                </button>
+                <button
+                  onClick={() =>
+                    handleAttackSelect(bank.id, AttackType.Hostile)
+                  }
+                  className={`px-3 py-1 rounded ${
+                    isHostile
+                      ? "bg-red-600 text-white"
+                      : "bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  }`}
+                  title="Fight other crews for the loot"
+                >
+                  Hostile
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
