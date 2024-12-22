@@ -1,4 +1,5 @@
-import { Action, CrewMember, PerkType } from "../types/game.types";
+import { GAME_CONFIG } from "../config/gameConfig";
+import { Action, CrewMember, Perk, PerkType } from "../types/game.types";
 
 export interface BaseCombatantResult {
   eliminated: boolean;
@@ -36,31 +37,30 @@ export class CombatService {
     attacker: CrewMember,
     defender: CrewMember | null
   ): number {
-    let baseChance = 0.5; // Base 50/50 chance for equal opponents
+    let baseChance: number = GAME_CONFIG.BASE_COMBAT_CHANCE;
 
     if (!defender) {
       // Fighting against a guard
-      baseChance = 0.5;
+      baseChance = GAME_CONFIG.BASE_COMBAT_CHANCE;
 
       // Gun perk gives advantage against guards
-      if (attacker.perks.some((p) => p.type === PerkType.Gun)) {
-        baseChance = 0.7; // 70% chance with gun
+      if (attacker.perks.some((p: Perk) => p.type === PerkType.Gun)) {
+        baseChance = GAME_CONFIG.GUN_ADVANTAGE_CHANCE;
       }
     } else {
       // Crew vs Crew combat
       const attackerHasGun = attacker.perks.some(
-        (p) => p.type === PerkType.Gun
+        (p: Perk) => p.type === PerkType.Gun
       );
       const defenderHasGun = defender.perks.some(
-        (p) => p.type === PerkType.Gun
+        (p: Perk) => p.type === PerkType.Gun
       );
 
       if (attackerHasGun && !defenderHasGun) {
-        baseChance = 0.7; // Attacker has advantage
+        baseChance = GAME_CONFIG.GUN_ADVANTAGE_CHANCE;
       } else if (!attackerHasGun && defenderHasGun) {
-        baseChance = 0.3; // Defender has advantage
+        baseChance = 1 - GAME_CONFIG.GUN_ADVANTAGE_CHANCE;
       }
-      // If both have guns or neither has guns, stays at 50%
     }
 
     return baseChance;
@@ -71,10 +71,15 @@ export class CombatService {
     isGuardFight: boolean = true
   ): CrewCombatantResult {
     // In crew vs crew combat, losers always die
-    const died = !isGuardFight || Math.random() < 0.3; // Always die in crew vs crew, 30% chance vs guards
-    const jailed = isGuardFight && !died; // Can only be jailed in guard fights
-    const hasGunPerk = loser.perks.some((p) => p.type === PerkType.Gun);
-    const jailTerm = jailed ? (hasGunPerk ? 5 : 3) : 0; // Jail terms only matter if jailed
+    const died =
+      !isGuardFight || Math.random() < GAME_CONFIG.DEATH_VS_GUARDS_CHANCE;
+    const jailed = isGuardFight && !died;
+    const hasGunPerk = loser.perks.some((p: Perk) => p.type === PerkType.Gun);
+    const jailTerm = jailed
+      ? hasGunPerk
+        ? GAME_CONFIG.JAIL_TERMS.WITH_GUN
+        : GAME_CONFIG.JAIL_TERMS.WITHOUT_GUN
+      : 0;
 
     // Clear actions if jailed
     if (jailed) {

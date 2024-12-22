@@ -3,7 +3,6 @@ import { useWebSocket } from "../contexts/WebSocketContext";
 import { Action, CrewMemberStatus } from "../game/types/game.types";
 import { BulkActionManager } from "./BulkActionManager";
 import { CrewMemberCard } from "./CrewMemberCard";
-import { HireMemberForm } from "./HireMemberForm";
 import { JoinGame } from "./JoinGame";
 import { TurnSubmission } from "./TurnSubmission";
 
@@ -143,8 +142,6 @@ export function GameInterface() {
               />
             ))}
           </div>
-
-          <HireMemberForm />
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { WebSocket } from "ws";
-import { calculateWorkSalary } from "../config/gameConfig";
+import { calculateWorkSalary, GAME_CONFIG } from "../config/gameConfig";
 import { GameState } from "../models/GameState.js";
 import {
   Action,
@@ -27,7 +27,6 @@ interface PlayerConnection {
   crewId: string;
 }
 
-const CREW_MEMBER_COST = 10000;
 const CREW_NAMES = [
   "Shadow",
   "Ghost",
@@ -191,14 +190,14 @@ export class GameService {
       );
 
       if (healthyMembers.length === 0) {
-        crew.capital += 10000; // Basic income for having no healthy crew
+        crew.capital += GAME_CONFIG.BASIC_INCOME; // Basic income for having no healthy crew
         crew.turnReports = [
           {
             crewMemberId: "system",
             message:
               "With no healthy crew members to manage, you earned basic income from regular work.",
             details: {
-              earnings: 10000,
+              earnings: GAME_CONFIG.BASIC_INCOME,
             },
           },
         ];
@@ -369,22 +368,6 @@ export class GameService {
     return `${randomName}-${randomNumber}`;
   }
 
-  private generateRandomPerks(): (typeof PERKS)[PerkType][] {
-    const numPerks = Math.random() < 0.3 ? 2 : Math.random() < 0.7 ? 1 : 0; // 30% chance for 2 perks, 40% for 1 perk, 30% for no perks
-    if (numPerks === 0) return [];
-
-    const availablePerks = Object.values(PERKS);
-    const selectedPerks = new Set<(typeof PERKS)[PerkType]>();
-
-    while (selectedPerks.size < numPerks) {
-      const randomPerk =
-        availablePerks[Math.floor(Math.random() * availablePerks.length)];
-      selectedPerks.add(randomPerk);
-    }
-
-    return Array.from(selectedPerks);
-  }
-
   // Player Connection Management
   addPlayer(ws: WebSocket, playerName: string): string {
     const crew = this.gameState.addCrew(playerName);
@@ -417,7 +400,7 @@ export class GameService {
         this.removePlayer(crewId);
         this.disconnectedPlayers.delete(crewId);
       }
-    }, 1000 * 60 * 30); // 30 minutes timeout
+    }, GAME_CONFIG.DISCONNECT_TIMEOUT); // 30 minutes timeout
   }
 
   removePlayer(crewId: string): void {
@@ -443,7 +426,7 @@ export class GameService {
     const crew = this.gameState.getCrew(crewId);
     if (!crew) return false;
 
-    if (crew.capital >= CREW_MEMBER_COST) {
+    if (crew.capital >= GAME_CONFIG.CREW_MEMBER_COST) {
       const newMember: CrewMember = {
         id: generateId(),
         name: this.generateRandomName(),
@@ -453,7 +436,7 @@ export class GameService {
       };
 
       crew.crewMembers.push(newMember);
-      crew.capital -= CREW_MEMBER_COST;
+      crew.capital -= GAME_CONFIG.CREW_MEMBER_COST;
       this.gameState.updateCrew(crew);
       return true;
     }

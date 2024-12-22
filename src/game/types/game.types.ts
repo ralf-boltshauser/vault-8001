@@ -130,7 +130,7 @@ export interface Bank {
   difficultyLevel: number;
   lootPotential: number;
   minLootPotential: number;
-  securityFeatures: string[];
+  securityFeatures: readonly string[];
   attackHistory: Attack[];
 }
 
