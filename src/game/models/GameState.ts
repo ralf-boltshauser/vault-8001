@@ -55,7 +55,7 @@ export class GameState {
     const crew: Crew = {
       id,
       name,
-      capital: 0,
+      capital: 200000,
       crewMembers: [],
       reputation: 0,
       morale: 100,
