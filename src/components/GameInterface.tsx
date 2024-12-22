@@ -74,7 +74,7 @@ export function GameInterface() {
   });
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto">
       <div className="grid gap-6">
         <TurnSubmission />
 

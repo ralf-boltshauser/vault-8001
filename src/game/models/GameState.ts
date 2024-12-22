@@ -1,5 +1,19 @@
-import { Bank, Crew, GamePhase, Strategy } from "../types/game.types";
+import {
+  Bank,
+  ChatThread,
+  Crew,
+  GamePhase,
+  Strategy,
+} from "../types/game.types";
 import { generateId } from "../utils/helpers";
+
+export interface SerializedGameState {
+  crews: [string, Crew][];
+  banks: [string, Bank][];
+  phase: GamePhase;
+  turnNumber: number;
+  chatThreads: [string, ChatThread][];
+}
 
 export class GameState {
   private static instance: GameState;
@@ -7,6 +21,7 @@ export class GameState {
   private banks: Map<string, Bank> = new Map();
   private phase: GamePhase = GamePhase.Planning;
   private turnNumber: number = 1;
+  private chatThreads: Map<string, ChatThread> = new Map();
 
   private constructor() {}
 
@@ -42,14 +57,35 @@ export class GameState {
     return this.turnNumber;
   }
 
+  // Chat-related methods
+  public getChatThread(threadId: string): ChatThread | undefined {
+    return this.chatThreads.get(threadId);
+  }
+
+  public getAllChatThreads(): ChatThread[] {
+    return Array.from(this.chatThreads.values());
+  }
+
+  public getChatThreadsForCrew(crewId: string): ChatThread[] {
+    return Array.from(this.chatThreads.values()).filter((thread) =>
+      thread.participants.includes(crewId)
+    );
+  }
+
+  public addChatThread(thread: ChatThread): void {
+    this.chatThreads.set(thread.id, thread);
+  }
+
+  public updateChatThread(thread: ChatThread): void {
+    this.chatThreads.set(thread.id, thread);
+  }
+
   // Setters
   addCrew(name: string): Crew {
-    // Use specific IDs for Ralf and Robin
+    // Use specific IDs for Ralf
     let id = generateId();
     if (name === "Ralf's Crew") {
       id = "ykb07swcgaq";
-    } else if (name === "Robin's Crew") {
-      id = "qrjqhdkhak8";
     }
 
     const crew: Crew = {
@@ -97,33 +133,34 @@ export class GameState {
   }
 
   // Serialization
-  serialize(): string {
-    const serializedBanks = Array.from(this.banks.entries()).map(
-      ([id, bank]) => [
-        id,
-        {
-          ...bank,
-          attackHistory: bank.attackHistory.map((attack) => ({
-            id: attack.id,
-            attackingCrews: attack.attackingCrews,
-            outcome: attack.outcome,
-            loot: attack.loot,
-            timestamp: attack.timestamp,
-            turnNumber: attack.turnNumber,
-            isPublic: attack.isPublic,
-            winners: attack.winners,
-          })),
-        },
-      ]
-    );
-
-    const serializedCrews = Array.from(this.crews.entries());
-
-    return JSON.stringify({
+  public serialize(): string {
+    const data = {
+      crews: Array.from(this.crews.entries()),
+      banks: Array.from(
+        [...this.banks.entries()].map(([key, value]) => [
+          key,
+          {
+            ...value,
+            attackHistory: value.attackHistory.map((attack) => ({
+              ...attack,
+              bank: undefined,
+            })),
+          },
+        ])
+      ),
       phase: this.phase,
       turnNumber: this.turnNumber,
-      banks: serializedBanks,
-      crews: serializedCrews,
-    });
+      chatThreads: Array.from(this.chatThreads.entries()),
+    };
+    return JSON.stringify(data);
+  }
+
+  public deserialize(serializedData: string): void {
+    const data = JSON.parse(serializedData) as SerializedGameState;
+    this.crews = new Map(data.crews);
+    this.banks = new Map(data.banks);
+    this.phase = data.phase;
+    this.turnNumber = data.turnNumber;
+    this.chatThreads = new Map(data.chatThreads);
   }
 }

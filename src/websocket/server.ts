@@ -1,5 +1,6 @@
 import process from "process";
 import { WebSocket, WebSocketServer } from "ws";
+import { ChatService } from "../game/services/ChatService.js";
 import { GameService } from "../game/services/GameService.js";
 import { PerkType, PlannedAction } from "../game/types/game.types.js";
 
@@ -12,6 +13,7 @@ type MessageType =
   | "buyPerk"
   | "assignAction"
   | "readyForNextPhase"
+  | "chat"
   | "error"
   | "joined"
   | "reconnected"
@@ -76,6 +78,16 @@ interface ReconnectPublicMessage extends BaseMessage {
   data: Record<string, never>;
 }
 
+interface ChatMessage extends BaseMessage {
+  type: "chat";
+  data: {
+    threadId: string;
+    message: {
+      content: string;
+    };
+  };
+}
+
 type GameMessage =
   | JoinMessage
   | ReconnectMessage
@@ -84,10 +96,12 @@ type GameMessage =
   | AssignActionMessage
   | ReadyMessage
   | JoinPublicMessage
-  | ReconnectPublicMessage;
+  | ReconnectPublicMessage
+  | ChatMessage;
 
 const wss = new WebSocketServer({ port: 8001 });
 const gameService = GameService.getInstance();
+const chatService = ChatService.getInstance();
 
 console.log("Game server is running on ws://localhost:8001");
 
@@ -98,7 +112,6 @@ wss.on("connection", (ws: WebSocket) => {
   ws.on("message", (message: string) => {
     try {
       const msg = JSON.parse(message.toString()) as GameMessage;
-
       switch (msg.type) {
         case "join":
           playerId = gameService.addPlayer(ws, msg.data.playerName);
@@ -206,6 +219,18 @@ wss.on("connection", (ws: WebSocket) => {
                 })
               );
             }
+          }
+          break;
+
+        case "chat":
+          if (playerId) {
+            const threadId = msg.data.threadId;
+            chatService.sendChatMessage(
+              playerId,
+              threadId,
+              msg.data.message.content
+            );
+            gameService.broadcastGameState();
           }
           break;
 

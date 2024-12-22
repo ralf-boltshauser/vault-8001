@@ -176,6 +176,7 @@ export interface GameState {
   phase: GamePhase;
   crews: Map<string, Crew>;
   banks: Map<string, Bank>;
+  chatThreads: Map<string, ChatThread>;
   turnNumber: number;
 }
 
@@ -186,3 +187,104 @@ export interface CombatResult {
   survivors: CrewMember[];
   details: string;
 }
+
+export type InformationPieceType =
+  | "chat_message" // Regular chat
+  | "bank_evidence" // Info about bank security, schedules, etc.
+  | "crew_evidence" // Info about other crews' activities
+  | "heist_evidence" // Evidence of past heists
+  | "spy_report"; // Special spy intel
+
+export interface BaseInformationPiece {
+  id: string;
+  senderId: string;
+  timestamp: number;
+  type: InformationPieceType;
+  isRead: boolean;
+}
+
+export interface ChatMessagePiece extends BaseInformationPiece {
+  type: "chat_message";
+  content: string;
+}
+
+export interface BankEvidencePiece extends BaseInformationPiece {
+  type: "bank_evidence";
+  bankId: string;
+  evidenceType: "guard_schedule" | "security_weakness" | "vault_details";
+  details: {
+    description: string;
+    confidence: number;
+    expiresAt?: number;
+  };
+}
+
+export interface CrewEvidencePiece extends BaseInformationPiece {
+  type: "crew_evidence";
+  targetCrewId: string;
+  evidenceType: "planned_heist" | "crew_strength" | "internal_info";
+  details: {
+    description: string;
+    confidence: number;
+  };
+}
+
+export interface HeistEvidencePiece extends BaseInformationPiece {
+  type: "heist_evidence";
+  heistId: string;
+  evidenceType: "photo" | "witness_account" | "security_footage";
+  details: {
+    description: string;
+    proof: string;
+  };
+}
+
+export interface SpyReportPiece extends BaseInformationPiece {
+  type: "spy_report";
+  reportType: "surveillance" | "infiltration" | "intercepted_comms";
+  details: {
+    description: string;
+    reliability: number;
+    actionableUntil?: number;
+  };
+}
+
+export type InformationPiece =
+  | ChatMessagePiece
+  | BankEvidencePiece
+  | CrewEvidencePiece
+  | HeistEvidencePiece
+  | SpyReportPiece;
+
+export interface ChatThread {
+  id: string;
+  participants: string[]; // Crew IDs
+  information: InformationPiece[];
+  lastActivity: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  content: string;
+  timestamp: number;
+  isRead: boolean;
+}
+
+export interface ChatThread {
+  id: string;
+  participants: string[];
+  messages: ChatMessage[];
+  createdAt: number;
+  lastActivity: number;
+}
+
+// Update WebSocketMessage type to include chat messages
+export type WebSocketMessage =
+  | { type: "gameState"; data: string }
+  | { type: "chat"; data: { threadId: string; message: ChatMessage } }
+  | {
+      type: "action";
+      data: { crewId: string; memberId: string; action: PlannedAction };
+    }
+  | { type: "ready"; data: { crewId: string } };

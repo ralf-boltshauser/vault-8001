@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   Bank,
+  ChatThread,
   Crew,
   GamePhase,
   PerkType,
@@ -12,7 +13,15 @@ interface GameState {
   phase: GamePhase;
   crews: [string, Crew][];
   banks: [string, Bank][];
+  chatThreads: [string, ChatThread][];
   turnNumber: number;
+}
+
+interface Message {
+  threadId: string;
+  message: {
+    content: string;
+  };
 }
 
 interface WebSocketContextType {
@@ -26,6 +35,7 @@ interface WebSocketContextType {
   buyPerk: (memberId: string, perkType: PerkType) => void;
   assignAction: (memberId: string, action: PlannedAction) => void;
   submitTurn: () => void;
+  sendMessage: (message: Message) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
@@ -48,6 +58,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   );
   const [gameState, setGameState] = useState<GameState>();
 
+  console.log(gameState);
   // Attempt to reconnect with stored credentials
   useEffect(() => {
     const storedPlayerId = localStorage.getItem(STORAGE_KEYS.PLAYER_ID);
@@ -207,6 +218,21 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const sendMessage = (message: Message) => {
+    console.log(message);
+    if (socket && connected && playerId) {
+      socket.send(
+        JSON.stringify({
+          type: "chat",
+          data: {
+            threadId: message.threadId,
+            message: message.message,
+          },
+        })
+      );
+    }
+  };
+
   const playerCrew =
     playerId && gameState
       ? gameState.crews.find(([id]) => id === playerId)?.[1]
@@ -225,6 +251,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         buyPerk,
         assignAction,
         submitTurn,
+        sendMessage,
       }}
     >
       {children}

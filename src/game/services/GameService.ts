@@ -8,6 +8,7 @@ import {
   AttackOutcome,
   AttackType,
   Bank,
+  ChatThread,
   Crew,
   CrewMember,
   CrewMemberStatus,
@@ -107,27 +108,6 @@ export class GameService {
       },
     ];
     this.gameState.updateCrew(ralf);
-
-    // Create Robin's crew
-    const robin = this.gameState.addCrew("Robin's Crew");
-    robin.capital = 200000;
-    robin.crewMembers = [
-      {
-        id: generateId(),
-        name: "Wraith-100",
-        perks: [],
-        action: Action.None,
-        status: CrewMemberStatus.Healthy,
-      },
-      {
-        id: generateId(),
-        name: "Phantom-925",
-        perks: [],
-        action: Action.None,
-        status: CrewMemberStatus.Healthy,
-      },
-    ];
-    this.gameState.updateCrew(robin);
   }
 
   // Turn Management
@@ -372,6 +352,23 @@ export class GameService {
   addPlayer(ws: WebSocket, playerName: string): string {
     const crew = this.gameState.addCrew(playerName);
     this.playerConnections.set(crew.id, { ws, crewId: crew.id });
+
+    // Initialize chat threads with all existing players
+    this.gameState.getAllCrews().forEach((otherCrew) => {
+      if (otherCrew.id !== crew.id) {
+        const threadId = generateId();
+        const thread: ChatThread = {
+          id: threadId,
+          participants: [crew.id, otherCrew.id],
+          messages: [],
+          information: [],
+          createdAt: Date.now(),
+          lastActivity: Date.now(),
+        };
+        this.gameState.addChatThread(thread);
+      }
+    });
+
     return crew.id;
   }
 
@@ -384,6 +381,9 @@ export class GameService {
 
   addPublicViewer(ws: WebSocket): void {
     this.publicConnections.add(ws);
+    // Send initial game state
+    const gameStateJson = this.gameState.serialize();
+    ws.send(JSON.stringify({ type: "gameState", data: gameStateJson }));
   }
 
   reconnectPublicViewer(ws: WebSocket): void {
