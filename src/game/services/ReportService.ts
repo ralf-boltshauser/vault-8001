@@ -2,6 +2,7 @@ import {
   Attack,
   AttackType,
   CrewMember,
+  CrewMemberStatus,
   PerkType,
   TurnReport,
 } from "../types/game.types";
@@ -13,7 +14,13 @@ export class ReportService {
     lootPerMember: number
   ): TurnReport {
     const hasPhone = crewMember.perks.some((p) => p.type === PerkType.Phone);
-    return this.generateReport(attack, crewMember, lootPerMember, hasPhone);
+    const notHealthy = crewMember.status !== CrewMemberStatus.Healthy;
+    return this.generateReport(
+      attack,
+      crewMember,
+      lootPerMember,
+      hasPhone && notHealthy
+    );
   }
 
   private generateReport(

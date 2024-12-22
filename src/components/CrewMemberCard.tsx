@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { Action, CrewMember, CrewMemberStatus } from "../game/types/game.types";
+import {
+  Action,
+  AttackType,
+  CrewMember,
+  CrewMemberStatus,
+} from "../game/types/game.types";
 import { ActionManager } from "./ActionManager";
 import { PerkManager } from "./PerkManager";
 
@@ -26,11 +31,22 @@ export function CrewMemberCard({
     member.action = Action.None;
   }
 
+  // Get border color based on status and planned action
+  const getBorderColor = () => {
+    if (member.status === CrewMemberStatus.Arrested) return "border-orange-500";
+    if (member.plannedAction?.attackType === AttackType.Cooperative)
+      return "border-blue-500";
+    if (member.plannedAction?.attackType === AttackType.Hostile)
+      return "border-red-500";
+    return "border-gray-700";
+  };
+
   return (
     <div
-      className={`bg-gray-800 p-4 rounded-lg shadow-lg ${
+      className={`relative bg-gray-800 rounded-lg p-4 border-2 ${getBorderColor()} ${
         isSelected ? "ring-2 ring-blue-500" : ""
       }`}
+      onClick={() => onSelect?.(member.id)}
     >
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-2">

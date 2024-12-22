@@ -37,6 +37,24 @@ export function GameInterface() {
     setSelectedMembers(healthyMembers.map((member) => member.id));
   };
 
+  // Sort crew members: healthy first, then by number of perks
+  const sortedMembers = [...playerCrew.crewMembers].sort((a, b) => {
+    // First sort by status (healthy first)
+    if (
+      a.status === CrewMemberStatus.Healthy &&
+      b.status !== CrewMemberStatus.Healthy
+    )
+      return -1;
+    if (
+      a.status !== CrewMemberStatus.Healthy &&
+      b.status === CrewMemberStatus.Healthy
+    )
+      return 1;
+
+    // Then sort by number of perks (more perks first)
+    return b.perks.length - a.perks.length;
+  });
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid gap-6">
@@ -83,7 +101,7 @@ export function GameInterface() {
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
-            {playerCrew.crewMembers.map((member) => (
+            {sortedMembers.map((member) => (
               <CrewMemberCard
                 key={member.id}
                 member={member}
