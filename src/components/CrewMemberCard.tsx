@@ -5,9 +5,15 @@ import { PerkManager } from "./PerkManager";
 
 interface CrewMemberCardProps {
   member: CrewMember;
+  isSelected: boolean;
+  onSelect: (memberId: string) => void;
 }
 
-export function CrewMemberCard({ member }: CrewMemberCardProps) {
+export function CrewMemberCard({
+  member,
+  isSelected,
+  onSelect,
+}: CrewMemberCardProps) {
   const [showPerks, setShowPerks] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
@@ -21,29 +27,49 @@ export function CrewMemberCard({ member }: CrewMemberCardProps) {
   }
 
   return (
-    <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
+    <div
+      className={`bg-gray-800 p-4 rounded-lg shadow-lg ${
+        isSelected ? "ring-2 ring-blue-500" : ""
+      }`}
+    >
       <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-xl font-bold text-white">{member.name}</h3>
-          <p className="text-gray-300">
-            Status:{" "}
-            <span
-              className={`${
-                member.status === CrewMemberStatus.Arrested
-                  ? "text-orange-400"
-                  : "text-white"
+        <div className="flex items-center gap-2">
+          {member.status === CrewMemberStatus.Healthy && (
+            <button
+              onClick={() => onSelect(member.id)}
+              className={`p-1 rounded ${
+                isSelected
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-700 text-gray-400 hover:bg-gray-600"
               }`}
             >
-              {member.status}
-              {member.status === CrewMemberStatus.Arrested &&
-                member.jailTerm !== undefined && (
-                  <span className="ml-1 text-sm">
-                    ({member.jailTerm}{" "}
-                    {member.jailTerm === 1 ? "turn" : "turns"} left)
-                  </span>
-                )}
-            </span>
-          </p>
+              <span className="material-icons text-sm">
+                {isSelected ? "check_box" : "check_box_outline_blank"}
+              </span>
+            </button>
+          )}
+          <div>
+            <h3 className="text-xl font-bold text-white">{member.name}</h3>
+            <p className="text-gray-300">
+              Status:{" "}
+              <span
+                className={`${
+                  member.status === CrewMemberStatus.Arrested
+                    ? "text-orange-400"
+                    : "text-white"
+                }`}
+              >
+                {member.status}
+                {member.status === CrewMemberStatus.Arrested &&
+                  member.jailTerm !== undefined && (
+                    <span className="ml-1 text-sm">
+                      ({member.jailTerm}{" "}
+                      {member.jailTerm === 1 ? "turn" : "turns"} left)
+                    </span>
+                  )}
+              </span>
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           {member.status !== CrewMemberStatus.Arrested && (
