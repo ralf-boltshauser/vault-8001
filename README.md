@@ -31,3 +31,7 @@
 - [ ] winning condition is having 20 mio
 - [ ] you can tip off banks and gain money if your bid is correct
 - [ ] players can just send money between each other
+
+## Bugs
+- [ ] hostile crew members with phone have no effect
+- [x] coop crew members always bring back 0

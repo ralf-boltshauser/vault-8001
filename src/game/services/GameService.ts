@@ -18,6 +18,7 @@ import {
   TurnReport,
 } from "../types/game.types.js";
 import { generateId } from "../utils/helpers.js";
+import { BankService } from "./BankService";
 import { CombatService } from "./CombatService";
 import { ReportService } from "./ReportService";
 
@@ -47,12 +48,14 @@ export class GameService {
   private disconnectedPlayers: Set<string> = new Set();
   private combatService: CombatService;
   private reportService: ReportService;
+  private bankService: BankService;
 
   private constructor() {
     this.gameState = GameState.getInstance();
     this.combatService = new CombatService();
     this.reportService = new ReportService();
-    this.initializeBanks();
+    this.bankService = BankService.getInstance();
+    this.initializeDefaultPlayers();
   }
 
   static getInstance(): GameService {
@@ -60,6 +63,71 @@ export class GameService {
       GameService.instance = new GameService();
     }
     return GameService.instance;
+  }
+
+  private initializeDefaultPlayers(): void {
+    // Create Ralf's crew
+    const ralf = this.gameState.addCrew("Ralf's Crew");
+    ralf.capital = 200000;
+    ralf.crewMembers = [
+      {
+        id: generateId(),
+        name: "Shadow-106",
+        perks: [],
+        action: Action.None,
+        status: CrewMemberStatus.Healthy,
+      },
+      {
+        id: generateId(),
+        name: "Wolf-346",
+        perks: [],
+        action: Action.None,
+        status: CrewMemberStatus.Healthy,
+      },
+      {
+        id: generateId(),
+        name: "Fox-927",
+        perks: [],
+        action: Action.None,
+        status: CrewMemberStatus.Healthy,
+      },
+      {
+        id: generateId(),
+        name: "Echo-413",
+        perks: [],
+        action: Action.None,
+        status: CrewMemberStatus.Healthy,
+      },
+      {
+        id: generateId(),
+        name: "Raven-410",
+        perks: [],
+        action: Action.None,
+        status: CrewMemberStatus.Healthy,
+      },
+    ];
+    this.gameState.updateCrew(ralf);
+
+    // Create Robin's crew
+    const robin = this.gameState.addCrew("Robin's Crew");
+    robin.capital = 200000;
+    robin.crewMembers = [
+      {
+        id: generateId(),
+        name: "Wraith-100",
+        perks: [],
+        action: Action.None,
+        status: CrewMemberStatus.Healthy,
+      },
+      {
+        id: generateId(),
+        name: "Phantom-925",
+        perks: [],
+        action: Action.None,
+        status: CrewMemberStatus.Healthy,
+      },
+    ];
+    this.gameState.updateCrew(robin);
   }
 
   // Turn Management
@@ -229,6 +297,9 @@ export class GameService {
   }
 
   private prepareNextTurn(): void {
+    // Process end of day for banks
+    this.bankService.processEndOfDay();
+
     // Reset crew ready states
     this.gameState.getAllCrews().forEach((crew) => {
       crew.isReadyForNextPhase = false;
@@ -330,6 +401,14 @@ export class GameService {
 
   getCrew(crewId: string) {
     return this.gameState.getCrew(crewId);
+  }
+
+  getBank(bankId: string): Bank | undefined {
+    return this.bankService.getBank(bankId);
+  }
+
+  getAllBanks(): Bank[] {
+    return this.bankService.getAllBanks();
   }
 
   // Game Actions
@@ -490,53 +569,10 @@ export class GameService {
       });
 
       // Update bank after successful heist
-      attack.bank.lootPotential = Math.max(
-        0,
-        attack.bank.lootPotential - attack.loot.amount
-      );
-      attack.bank.guardsCurrent = Math.min(
-        attack.bank.guardMax,
-        attack.bank.guardsCurrent + Math.ceil(combatResult.winners.length / 2)
-      );
+      this.bankService.onBankRobbed(attack);
     }
 
     return attack;
-  }
-
-  private initializeBanks(): void {
-    const defaultBanks: Bank[] = [
-      {
-        id: generateId(),
-        name: "Small Town Bank",
-        capital: 100000,
-        guardMin: 2,
-        guardMax: 4,
-        guardsCurrent: 3,
-        difficultyLevel: 1,
-        lootPotential: 10000,
-        securityFeatures: ["Basic Alarm", "Cameras"],
-        attackHistory: [],
-      },
-      {
-        id: generateId(),
-        name: "City Central Bank",
-        capital: 1000000,
-        guardMin: 5,
-        guardMax: 10,
-        guardsCurrent: 7,
-        difficultyLevel: 3,
-        lootPotential: 100000,
-        securityFeatures: [
-          "Advanced Alarm",
-          "Armed Guards",
-          "Vault Timer",
-          "Security Doors",
-        ],
-        attackHistory: [],
-      },
-    ];
-
-    defaultBanks.forEach((bank) => this.gameState.addBank(bank));
   }
 
   // Broadcast game updates to all connected players

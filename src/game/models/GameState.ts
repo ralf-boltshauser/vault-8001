@@ -1,4 +1,5 @@
 import { Bank, Crew, GamePhase, Strategy } from "../types/game.types";
+import { generateId } from "../utils/helpers";
 
 export class GameState {
   private static instance: GameState;
@@ -43,19 +44,32 @@ export class GameState {
 
   // Setters
   addCrew(name: string): Crew {
+    // Use specific IDs for Ralf and Robin
+    let id = generateId();
+    if (name === "Ralf's Crew") {
+      id = "ykb07swcgaq";
+    } else if (name === "Robin's Crew") {
+      id = "qrjqhdkhak8";
+    }
+
     const crew: Crew = {
-      id: Math.random().toString(36).substring(2),
+      id,
       name,
-      capital: 100000,
+      capital: 0,
       crewMembers: [],
       reputation: 0,
       morale: 100,
       incomePerTurn: 0,
       strategy: Strategy.Stealthy,
       isReadyForNextPhase: false,
+      turnReports: [],
     };
     this.crews.set(crew.id, crew);
     return crew;
+  }
+
+  addCrewWithId(crew: Crew): void {
+    this.crews.set(crew.id, crew);
   }
 
   updateCrew(crew: Crew): void {

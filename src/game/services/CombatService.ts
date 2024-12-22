@@ -405,7 +405,7 @@ export class CombatService {
             ...hostileCasualties,
             ...finalFight.casualties,
           ],
-          remainingDefenders: finalFight.remainingDefenders,
+          remainingDefenders: 0,
         };
       }
 
