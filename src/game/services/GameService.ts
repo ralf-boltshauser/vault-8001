@@ -27,6 +27,10 @@ interface PlayerConnection {
   crewId: string;
 }
 
+interface PublicConnection {
+  ws: WebSocket;
+}
+
 const CREW_MEMBER_COST = 10000;
 const CREW_NAMES = [
   "Shadow",
@@ -45,6 +49,7 @@ export class GameService {
   private static instance: GameService;
   private gameState: GameState;
   private playerConnections: Map<string, PlayerConnection> = new Map();
+  private publicConnections: Set<WebSocket> = new Set();
   private disconnectedPlayers: Set<string> = new Set();
   private combatService: CombatService;
   private reportService: ReportService;
@@ -234,7 +239,6 @@ export class GameService {
       this.generateReports(result);
 
       // Update bank's attack history
-      bank.attackHistory.push(result);
       this.gameState.updateBank(bank);
     });
 
@@ -378,6 +382,14 @@ export class GameService {
       this.disconnectedPlayers.delete(crewId);
     }
     this.playerConnections.set(crewId, { ws, crewId });
+  }
+
+  addPublicViewer(ws: WebSocket): void {
+    this.publicConnections.add(ws);
+  }
+
+  reconnectPublicViewer(ws: WebSocket): void {
+    this.publicConnections.add(ws);
   }
 
   disconnectPlayer(crewId: string): void {
@@ -575,12 +587,35 @@ export class GameService {
     return attack;
   }
 
-  // Broadcast game updates to all connected players
+  // Public screen connection management
+  addPublicConnection(ws: WebSocket): void {
+    this.publicConnections.add(ws);
+    // Send initial game state
+    ws.send(
+      JSON.stringify({ type: "gameState", data: this.gameState.serialize() })
+    );
+  }
+
+  removePublicConnection(ws: WebSocket): void {
+    this.publicConnections.delete(ws);
+  }
+
+  // Broadcast game updates to all connected clients
   broadcastGameState(): void {
     const gameStateJson = this.gameState.serialize();
+    const message = JSON.stringify({ type: "gameState", data: gameStateJson });
+
+    // Send to players
     this.playerConnections.forEach(({ ws }) => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "gameState", data: gameStateJson }));
+        ws.send(message);
+      }
+    });
+
+    // Send to public screens
+    this.publicConnections.forEach((ws) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(message);
       }
     });
   }

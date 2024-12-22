@@ -1,3 +1,4 @@
+"use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   Bank,
@@ -20,7 +21,7 @@ interface WebSocketContextType {
   playerId?: string;
   playerCrew?: Crew;
   gameState?: GameState;
-  connect: (playerName: string) => void;
+  connect: (playerName?: string) => void;
   hireMember: () => void;
   buyPerk: (memberId: string, perkType: PerkType) => void;
   assignAction: (memberId: string, action: PlannedAction) => void;
@@ -80,7 +81,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     };
   }, [connected, connecting]);
 
-  const connect = (playerName: string) => {
+  const connect = (playerName?: string) => {
     if (connecting) return;
     setConnecting(true);
 
@@ -90,17 +91,29 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       setConnected(true);
       setSocket(ws);
       // Store player name for reconnection
-      localStorage.setItem(STORAGE_KEYS.PLAYER_NAME, playerName);
+      if (playerName) {
+        localStorage.setItem(STORAGE_KEYS.PLAYER_NAME, playerName);
+      }
 
       // If we have a stored playerId, try to reconnect, otherwise join as new player
       const storedPlayerId = localStorage.getItem(STORAGE_KEYS.PLAYER_ID);
       ws.send(
         JSON.stringify({
-          type: storedPlayerId ? "reconnect" : "join",
-          data: {
-            playerName,
-            playerId: storedPlayerId,
-          },
+          type: storedPlayerId
+            ? playerName
+              ? "reconnect"
+              : "reconnectPublic"
+            : playerName
+            ? "join"
+            : "joinPublic",
+          data: playerName
+            ? {
+                playerName,
+                playerId: storedPlayerId,
+              }
+            : {
+                playerId: storedPlayerId,
+              },
         })
       );
       setConnecting(false);

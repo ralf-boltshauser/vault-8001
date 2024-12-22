@@ -5,7 +5,9 @@ import { PerkType, PlannedAction } from "../game/types/game.types.js";
 
 type MessageType =
   | "join"
+  | "joinPublic"
   | "reconnect"
+  | "reconnectPublic"
   | "hireMember"
   | "buyPerk"
   | "assignAction"
@@ -64,13 +66,25 @@ interface ReadyMessage extends BaseMessage {
   data: Record<string, never>;
 }
 
+interface JoinPublicMessage extends BaseMessage {
+  type: "joinPublic";
+  data: Record<string, never>;
+}
+
+interface ReconnectPublicMessage extends BaseMessage {
+  type: "reconnectPublic";
+  data: Record<string, never>;
+}
+
 type GameMessage =
   | JoinMessage
   | ReconnectMessage
   | HireMemberMessage
   | BuyPerkMessage
   | AssignActionMessage
-  | ReadyMessage;
+  | ReadyMessage
+  | JoinPublicMessage
+  | ReconnectPublicMessage;
 
 const wss = new WebSocketServer({ port: 8001 });
 const gameService = GameService.getInstance();
@@ -109,6 +123,16 @@ wss.on("connection", (ws: WebSocket) => {
               })
             );
           }
+          break;
+
+        case "joinPublic":
+          gameService.addPublicViewer(ws);
+          gameService.broadcastGameState();
+          break;
+
+        case "reconnectPublic":
+          gameService.reconnectPublicViewer(ws);
+          gameService.broadcastGameState();
           break;
 
         case "hireMember":
