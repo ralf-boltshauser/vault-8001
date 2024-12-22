@@ -59,35 +59,9 @@ export default function ChatThread({ threadId }: ChatThreadProps) {
       <div className="flex-1 overflow-y-auto p-4 bg-gray-900">
         {thread.messages.map((msg, index) => {
           const isOwnMessage = msg.senderId === playerCrew.id;
-          const isFirstUnread =
-            index ===
-            thread.messages.findIndex(
-              (m) => !m.isRead && m.senderId !== playerCrew.id
-            );
-          const isLastRead =
-            !msg.isRead &&
-            index > 0 &&
-            thread.messages[index - 1].isRead &&
-            msg.senderId !== playerCrew.id;
 
           return (
             <div key={msg.id}>
-              {isFirstUnread && (
-                <div className="flex items-center my-4" key={msg.id + "unread"}>
-                  <div className="flex-1 border-t border-gray-700"></div>
-                  <span className="px-3 text-sm text-gray-500">
-                    Unread messages
-                  </span>
-                  <div className="flex-1 border-t border-gray-700"></div>
-                </div>
-              )}
-              {isLastRead && (
-                <div className="flex items-center my-4" key={msg.id + "read"}>
-                  <div className="flex-1 border-t border-gray-700"></div>
-                  <span className="px-3 text-sm text-gray-500">Last read</span>
-                  <div className="flex-1 border-t border-gray-700"></div>
-                </div>
-              )}
               <div
                 key={msg.id}
                 className={`mb-4 flex ${
