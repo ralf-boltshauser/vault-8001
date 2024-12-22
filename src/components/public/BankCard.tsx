@@ -50,7 +50,7 @@ export function BankCard({ bank }: BankCardProps) {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-white">{bank.name}</h2>
         <div className="text-gray-300">
-          Guards: {bank.guardsCurrent}/{bank.guardMax}
+          Guards: {bank.guardMin}-{bank.guardMax}
         </div>
       </div>
       <div className="mb-4">

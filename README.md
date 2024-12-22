@@ -4,6 +4,7 @@
 
 ## Todos
 - [ ] first build the MVP, which means a finish screen once the first player has 20 mio, and then add the rest of the features
+- [ ] build observability of the game that i can at every turn track how much capital or value a player has to then later investigate what are exploitable patterns
 
 ## Ideas
 - [ ] banks gain more cash over time
