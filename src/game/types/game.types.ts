@@ -160,11 +160,15 @@ export interface Attack {
   id: string;
   bank: Bank;
   attackingCrews: AttackingCrew[];
-  outcome?: AttackOutcome;
-  loot?: Loot;
-  casualties?: Casualties;
-  winners?: CrewMember[];
   timestamp: number;
+  outcome?: AttackOutcome;
+  winners?: CrewMember[];
+  loot?: {
+    type: string;
+    amount: number;
+  };
+  isPublic?: boolean;
+  turnNumber: number;
 }
 
 export interface GameState {

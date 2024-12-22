@@ -1,4 +1,4 @@
-import { AttackOutcome, Bank } from "@/game/types/game.types";
+import { Attack, Bank } from "@/game/types/game.types";
 import { useState } from "react";
 
 interface BankCardProps {
@@ -8,105 +8,68 @@ interface BankCardProps {
 export function BankCard({ bank }: BankCardProps) {
   const [showHistory, setShowHistory] = useState(false);
 
-  // Sort attacks by timestamp, most recent first
-  const sortedHistory = [...bank.attackHistory].sort(
-    (a, b) => b.timestamp - a.timestamp
-  );
+  const formatMoney = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const renderAttackHistory = (attack: Attack) => {
+    if (!attack.isPublic) {
+      return (
+        <div key={attack.id} className="text-gray-300 mb-2">
+          <span className="text-gray-400">Turn {attack.turnNumber}:</span>{" "}
+          {attack.outcome === "success" && attack.loot
+            ? `${formatMoney(attack.loot.amount)} was stolen`
+            : "Attempted heist"}
+        </div>
+      );
+    }
+
+    // Full details for public attacks
+    return (
+      <div key={attack.id} className="text-gray-300 mb-2">
+        <span className="text-gray-400">Turn {attack.turnNumber}:</span>{" "}
+        {attack.attackingCrews.map((crew) => (
+          <span key={crew.crew.id}>
+            {crew.crew.name} ({crew.crewMembers.length} members)
+            {crew.type === "cooperative" ? " (cooperative)" : ""}
+          </span>
+        ))}{" "}
+        {attack.outcome === "success" && attack.loot
+          ? `successfully stole ${formatMoney(attack.loot.amount)}`
+          : "failed to rob the bank"}
+      </div>
+    );
+  };
 
   return (
     <div className="bg-gray-800 rounded-lg p-6 shadow-lg">
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-white">{bank.name}</h2>
-          <div className="mt-2 space-y-1">
-            <p className="text-gray-300">
-              Guards: {bank.guardsCurrent} (Min: {bank.guardMin}, Max:{" "}
-              {bank.guardMax})
-            </p>
-            <p className="text-gray-300">
-              Loot Potential: ${bank.lootPotential.toLocaleString()}
-            </p>
-            <p className="text-gray-300">
-              Minimum Loot: ${bank.minLootPotential.toLocaleString()}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col items-end">
-          <div className="text-sm font-medium px-3 py-1 rounded-full bg-gray-700 text-gray-300">
-            Level {bank.difficultyLevel}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2 justify-end">
-            {bank.securityFeatures.map((feature) => (
-              <span
-                key={feature}
-                className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300"
-              >
-                {feature}
-              </span>
-            ))}
-          </div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-white">{bank.name}</h2>
+        <div className="text-gray-300">
+          Guards: {bank.guardsCurrent}/{bank.guardMax}
         </div>
       </div>
-
-      <div className="border-t border-gray-700 pt-4">
+      <div className="mb-4">
+        <div className="text-gray-300">
+          Loot Potential: {formatMoney(bank.lootPotential)}
+        </div>
+      </div>
+      <div>
         <button
           onClick={() => setShowHistory(!showHistory)}
-          className="flex items-center text-blue-400 hover:text-blue-300"
+          className="text-blue-400 hover:text-blue-300 focus:outline-none"
         >
-          <span className="material-icons mr-1">
-            {showHistory ? "expand_less" : "expand_more"}
-          </span>
-          {showHistory ? "Hide Attack History" : "Show Attack History"}
+          {showHistory ? "Hide History" : "Show History"}
         </button>
-
-        {showHistory && (
-          <div className="mt-4 space-y-4">
-            {sortedHistory.length === 0 ? (
-              <p className="text-gray-400">No recorded attacks yet.</p>
-            ) : (
-              sortedHistory.map((attack) => (
-                <div
-                  key={attack.id}
-                  className={`p-4 rounded ${
-                    attack.outcome === AttackOutcome.Success
-                      ? "bg-green-900/30"
-                      : attack.outcome === AttackOutcome.Failure
-                      ? "bg-red-900/30"
-                      : "bg-yellow-900/30"
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="text-white font-medium">
-                        {new Date(attack.timestamp).toLocaleString()}
-                      </div>
-                      <div className="text-sm text-gray-300 mt-1">
-                        Crews:{" "}
-                        {attack.attackingCrews
-                          .map((ac) => ac.crew.name)
-                          .join(", ")}
-                      </div>
-                      {attack.loot && (
-                        <div className="text-sm text-green-400 mt-1">
-                          Stolen: ${attack.loot.amount.toLocaleString()}
-                        </div>
-                      )}
-                    </div>
-                    <div
-                      className={`text-sm font-medium px-3 py-1 rounded ${
-                        attack.outcome === AttackOutcome.Success
-                          ? "bg-green-900 text-green-300"
-                          : attack.outcome === AttackOutcome.Failure
-                          ? "bg-red-900 text-red-300"
-                          : "bg-yellow-900 text-yellow-300"
-                      }`}
-                    >
-                      {attack.outcome}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+        {showHistory && bank.attackHistory && bank.attackHistory.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {bank.attackHistory
+              .sort((a, b) => b.timestamp - a.timestamp)
+              .map(renderAttackHistory)}
           </div>
         )}
       </div>

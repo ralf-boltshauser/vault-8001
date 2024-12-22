@@ -98,33 +98,32 @@ export class GameState {
 
   // Serialization
   serialize(): string {
-    const state = {
+    const serializedBanks = Array.from(this.banks.entries()).map(
+      ([id, bank]) => [
+        id,
+        {
+          ...bank,
+          attackHistory: bank.attackHistory.map((attack) => ({
+            id: attack.id,
+            attackingCrews: attack.attackingCrews,
+            outcome: attack.outcome,
+            loot: attack.loot,
+            timestamp: attack.timestamp,
+            turnNumber: attack.turnNumber,
+            isPublic: attack.isPublic,
+            winners: attack.winners,
+          })),
+        },
+      ]
+    );
+
+    const serializedCrews = Array.from(this.crews.entries());
+
+    return JSON.stringify({
       phase: this.phase,
       turnNumber: this.turnNumber,
-      crews: Array.from(this.crews.entries()),
-      banks: Array.from(this.banks.entries()).map(([id, bank]) => {
-        // Create a copy of the bank without circular references
-        const { attackHistory, ...bankWithoutHistory } = bank;
-        return [
-          id,
-          {
-            ...bankWithoutHistory,
-            // Only include essential attack information
-            attackHistory: attackHistory.map((attack) => ({
-              id: attack.id,
-              outcome: attack.outcome,
-              timestamp: attack.timestamp,
-              loot: attack.loot,
-              attackingCrews: attack.attackingCrews.map((crew) => ({
-                crew: { id: crew.crew.id, name: crew.crew.name },
-                type: crew.type,
-                strategy: crew.strategy,
-              })),
-            })),
-          },
-        ];
-      }),
-    };
-    return JSON.stringify(state);
+      banks: serializedBanks,
+      crews: serializedCrews,
+    });
   }
 }

@@ -27,10 +27,6 @@ interface PlayerConnection {
   crewId: string;
 }
 
-interface PublicConnection {
-  ws: WebSocket;
-}
-
 const CREW_MEMBER_COST = 10000;
 const CREW_NAMES = [
   "Shadow",
@@ -238,7 +234,7 @@ export class GameService {
       const result = this.executeAttack(attack);
       this.generateReports(result);
 
-      // Update bank's attack history
+      // Update bank in game state
       this.gameState.updateBank(bank);
     });
 
@@ -496,6 +492,8 @@ export class GameService {
         },
       ],
       timestamp: Date.now(),
+      turnNumber: this.gameState.getTurnNumber(),
+      isPublic: false,
     };
 
     return attack;
@@ -659,12 +657,16 @@ export class GameService {
       };
     });
 
+    console.log("turn number: ", this.gameState.getTurnNumber());
+
     return {
       id: generateId(),
       bank,
       attackingCrews,
       timestamp: Date.now(),
-    };
+      turnNumber: this.gameState.getTurnNumber(),
+      isPublic: false, // By default, attacks are not public
+    } as Attack;
   }
 
   private findCrewByMemberId(memberId: string): Crew | undefined {
