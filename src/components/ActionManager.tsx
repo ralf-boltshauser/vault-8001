@@ -24,7 +24,8 @@ export function ActionManager({ member }: ActionManagerProps) {
 
   // Convert Map entries to Bank array with IDs
   const banks: BankWithId[] = gameState
-    ? Array.from(gameState.banks.values()).map(([_, bank]) => bank)
+    ? // eslint-disable-next-line
+      Array.from(gameState.banks.values()).map(([_, bank]) => bank)
     : [];
 
   const handleActionChange = (action: Action) => {
@@ -94,8 +95,8 @@ export function ActionManager({ member }: ActionManagerProps) {
               <div className="flex-1">
                 <div className="text-white">{bank.name}</div>
                 <div className="text-sm text-gray-400">
-                  Guards: {bank.guardsCurrent || 0} | Potential: $
-                  {(bank.lootPotential || 0).toLocaleString()}
+                  Guards: {bank.guardMin || 0} to {bank.guardMax || 0} |
+                  Potential: ${(bank.lootPotential || 0).toLocaleString()}
                 </div>
               </div>
               <div className="flex gap-2">

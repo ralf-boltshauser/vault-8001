@@ -91,6 +91,7 @@ export class BankService {
     this.onBankRobbedExtension(bank, attack);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected onBankRobbedExtension(bank: Bank, attack: Attack): void {
     // Extension point for derived classes
     // Can be overridden to add custom behavior when a bank is robbed

@@ -109,7 +109,7 @@ export class CombatService {
       return {
         winner: attacker,
         loser: defender
-          ? this.processCasualty(defender, false) // Crew vs Crew
+          ? this.processCasualty(defender, isGuardFight) // Crew vs Crew
           : {
               type: "guard",
               combatant: null,

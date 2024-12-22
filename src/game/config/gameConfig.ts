@@ -21,7 +21,7 @@ export const GAME_CONFIG = {
   SECURITY_FEATURE_POWER: 5, // Power per security feature
   MIN_SUCCESS_RATE: 30, // Minimum success rate for partial success
   HIGH_SUCCESS_RATE: 70, // Rate needed for full success
-  LOOT_REGENERATION_RATE: 0.1, // 10% of the gap regenerates per turn
+  LOOT_REGENERATION_RATE: 0.05, // 5% of the gap regenerates per turn
   MAX_LOOT_MULTIPLIER: 2, // Maximum loot is double the initial potential
   MIN_LOOT_PERCENTAGE: 0.6, // Minimum loot is 60% of initial potential
 
@@ -69,6 +69,21 @@ export const GAME_CONFIG = {
       difficultyLevel: 3,
       lootPotential: 400000,
       minLootPotential: 240000,
+      securityFeatures: [
+        "Advanced Alarm",
+        "Armed Guards",
+        "Vault Timer",
+        "Security Doors",
+      ],
+    },
+    {
+      name: "SNB",
+      guardMin: 15,
+      guardMax: 25,
+      guardsCurrent: 15,
+      difficultyLevel: 5,
+      lootPotential: 10000000,
+      minLootPotential: 6000000,
       securityFeatures: [
         "Advanced Alarm",
         "Armed Guards",

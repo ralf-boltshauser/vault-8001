@@ -13,6 +13,7 @@ export function BankList() {
     );
   }
 
+  // eslint-disable-next-line
   const banks = Array.from(gameState.banks.values()).map(([_, bank]) => bank);
 
   return (
