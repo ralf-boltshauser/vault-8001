@@ -163,6 +163,7 @@ export interface Attack {
   timestamp: number;
   outcome?: AttackOutcome;
   winners?: CrewMember[];
+  emptySurvivors?: CrewMember[];
   loot?: {
     type: string;
     amount: number;

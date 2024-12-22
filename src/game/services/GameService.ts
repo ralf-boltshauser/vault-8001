@@ -273,6 +273,25 @@ export class GameService {
   }
 
   private generateReports(attack: Attack): void {
+    if (!attack.winners || attack.winners.length == 0) {
+      if (attack.emptySurvivors && attack.emptySurvivors.length > 0) {
+        attack.emptySurvivors.forEach((member) => {
+          const crew = this.findCrewByMemberId(member.id);
+          if (!crew) return;
+
+          const report = this.reportService.generateMemberReport(
+            attack,
+            member,
+            0
+          );
+          crew.turnReports = crew.turnReports || [];
+          crew.turnReports.push(report);
+          this.gameState.updateCrew(crew);
+        });
+      }
+      return;
+    }
+
     if (!attack.winners) return;
 
     const lootPerMember = Math.floor(
@@ -518,6 +537,7 @@ export class GameService {
 
     // Store winners in attack object
     attack.winners = combatResult.winners;
+    attack.emptySurvivors = combatResult.emptySurvivors;
 
     // Process casualties
     combatResult.casualties.forEach((casualty) => {

@@ -28,6 +28,7 @@ export interface TeamCombatResult {
   winners: CrewMember[];
   casualties: CombatantResult[];
   remainingDefenders: number;
+  emptySurvivors: CrewMember[];
 }
 
 export class CombatService {
@@ -240,7 +241,7 @@ export class CombatService {
     }
 
     // For guard fights, add any remaining attackers who didn't need to fight
-    if (isGuards && remainingDefenders === 0) {
+    if (remainingDefenders === 0) {
       currentAttackers.forEach((attacker) => {
         if (!survivors.includes(attacker)) {
           console.log(`    ✨ ${attacker.name} survived without fighting`);
@@ -267,6 +268,7 @@ export class CombatService {
       winners: survivors,
       casualties,
       remainingDefenders,
+      emptySurvivors: [],
     };
   }
 
@@ -298,28 +300,14 @@ export class CombatService {
         .join(", ")}`
     );
 
-    // Fight against guards first
-    console.log("\n🏛️ Phase 1: Heist Crew vs Bank Guards");
-    const guardCombatResult = this.teamCombat(
-      combinedCoopCrew,
-      numGuards,
-      true
-    );
+    let hostileWinners: CrewMember[][] = [];
+    let hostileCasualties: CombatantResult[] = [];
 
-    // If coop crews failed against guards, return early
-    if (guardCombatResult.remainingDefenders > 0) {
-      console.log("\n❌ Heist failed - Guards prevailed");
-      return guardCombatResult;
-    }
-
-    console.log("\n✅ Heist successful!");
-
-    // If there are hostile crews and coop crews won against guards
+    // If there are hostile crews, run the tournament first
     if (hostileCrews.length > 0) {
-      console.log("\n🔥 Phase 2: Hostile Crews Tournament");
+      console.log("\n🔥 Phase 1: Hostile Crews Tournament");
       // First, hostile crews fight each other in a tournament style
-      let hostileWinners = [...hostileCrews];
-      let hostileCasualties: CombatantResult[] = [];
+      hostileWinners = [...hostileCrews];
       let round = 1;
 
       // Keep fighting until only one hostile crew remains
@@ -358,67 +346,85 @@ export class CombatService {
         hostileWinners = nextRoundWinners;
         round++;
       }
+    }
 
-      // If any hostile crews survived their tournament
-      if (hostileWinners.length > 0 && hostileWinners[0].length > 0) {
-        console.log(
-          "\n⚔️ Phase 3: Final Showdown - Tournament Winner vs Heist Crew"
-        );
-        console.log(
-          `  Tournament Winners: ${hostileWinners[0]
-            .map((w) => w.name)
-            .join(", ")}`
-        );
-        console.log(
-          `  Heist Survivors: ${guardCombatResult.winners
-            .map((w) => w.name)
-            .join(", ")}`
-        );
+    // Fight against guards second
+    console.log("\n🏛️ Phase 2: Heist Crew vs Bank Guards");
+    const guardCombatResult = this.teamCombat(
+      combinedCoopCrew,
+      numGuards,
+      true
+    );
 
-        // Final fight: Surviving hostile crew vs successful heist crew
-        // Now we pass the actual crew members to fight against each other
-        const finalFight = this.teamCombat(
-          hostileWinners[0], // Tournament winners
-          guardCombatResult.winners, // Actual heist survivors
-          false // Not guards, actual crew members will fight
-        );
-
-        console.log("\n🏆 Final Results:");
-        console.log(
-          `  Winners: ${finalFight.winners.map((w) => w.name).join(", ")}`
-        );
-        console.log(
-          `  Total Casualties: ${[
-            ...guardCombatResult.casualties,
-            ...hostileCasualties,
-            ...finalFight.casualties,
-          ]
-            .filter((c) => c.type === "crew")
-            .map((c) => c.combatant.name)
-            .join(", ")}`
-        );
-
-        return {
-          winners: finalFight.winners,
-          casualties: [
-            ...guardCombatResult.casualties,
-            ...hostileCasualties,
-            ...finalFight.casualties,
-          ],
-          remainingDefenders: 0,
-        };
-      }
-
-      console.log("\n💀 No hostile crews survived the tournament");
-      // If no hostile crews survived their tournament
+    // If coop crews failed against guards, return early with all casualties
+    if (guardCombatResult.remainingDefenders > 0) {
+      console.log("\n❌ Heist failed - Guards prevailed");
       return {
-        winners: guardCombatResult.winners,
+        winners: [],
+        emptySurvivors: hostileWinners.length > 0 ? hostileWinners[0] : [],
         casualties: [...guardCombatResult.casualties, ...hostileCasualties],
-        remainingDefenders: 0,
+        remainingDefenders: guardCombatResult.remainingDefenders,
       };
     }
 
-    // If no hostile crews, return guard combat result with its casualties
-    return guardCombatResult;
+    console.log("\n✅ Heist successful!");
+
+    // If hostile tournament had survivors, final showdown
+    if (hostileWinners.length > 0 && hostileWinners[0].length > 0) {
+      console.log(
+        "\n⚔️ Phase 3: Final Showdown - Tournament Winner vs Heist Crew"
+      );
+      console.log(
+        `  Tournament Winners: ${hostileWinners[0]
+          .map((w) => w.name)
+          .join(", ")}`
+      );
+      console.log(
+        `  Heist Survivors: ${guardCombatResult.winners
+          .map((w) => w.name)
+          .join(", ")}`
+      );
+
+      // Final fight: Surviving hostile crew vs successful heist crew
+      const finalFight = this.teamCombat(
+        hostileWinners[0], // Tournament winners
+        guardCombatResult.winners, // Actual heist survivors
+        false // Not guards, actual crew members will fight
+      );
+
+      console.log("\n🏆 Final Results:");
+      console.log(
+        `  Winners: ${finalFight.winners.map((w) => w.name).join(", ")}`
+      );
+      console.log(
+        `  Total Casualties: ${[
+          ...guardCombatResult.casualties,
+          ...hostileCasualties,
+          ...finalFight.casualties,
+        ]
+          .filter((c) => c.type === "crew")
+          .map((c) => c.combatant.name)
+          .join(", ")}`
+      );
+
+      return {
+        winners: finalFight.winners,
+        casualties: [
+          ...guardCombatResult.casualties,
+          ...hostileCasualties,
+          ...finalFight.casualties,
+        ],
+        remainingDefenders: 0,
+        emptySurvivors: [],
+      };
+    }
+
+    // If no hostile crews or none survived tournament, return guard combat result
+    return {
+      winners: guardCombatResult.winners,
+      casualties: [...guardCombatResult.casualties, ...hostileCasualties],
+      remainingDefenders: 0,
+      emptySurvivors: [],
+    };
   }
 }

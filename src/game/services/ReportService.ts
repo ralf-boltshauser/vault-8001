@@ -26,7 +26,11 @@ export class ReportService {
       crewMemberId: crewMember.id,
       message:
         this.generateHeistDetails(attack) +
-        ` and brought home $${lootPerMember.toLocaleString()}.` +
+        ` ${
+          lootPerMember === 0
+            ? "came home empty"
+            : `and brought home $${lootPerMember.toLocaleString()}`
+        }.` +
         (phoneReport ? ` It was great serving you!` : ""),
       details: {
         location: attack.bank.name,
@@ -70,7 +74,7 @@ export class ReportService {
     }
 
     if (attack.winners) {
-      parts.push(`There were ${attack.winners.length} survivors`);
+      parts.push(`There were ${attack.winners.length} heist survivors`);
     }
 
     return parts.join(". ");
