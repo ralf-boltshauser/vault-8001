@@ -205,59 +205,27 @@ export class GameService {
   }
 
   private generateReports(attack: Attack): void {
-    // Generate reports for successful heist survivors
-    if (attack.outcome === AttackOutcome.Success) {
-      const lootPerMember =
-        attack.loot?.amount && attack.winners?.length
-          ? Math.floor(attack.loot.amount / attack.winners.length)
-          : 0;
+    if (!attack.winners) return;
 
-      attack.attackingCrews.forEach((attackingCrew) => {
-        const crew = this.gameState.getCrew(attackingCrew.crew.id);
-        if (!crew) return;
-
-        // Find survivors from this crew
-        const survivors =
-          attack.winners?.filter((winner: CrewMember) =>
-            attackingCrew.crewMembers.some((member) => member.id === winner.id)
-          ) || [];
-
-        // Generate reports only for survivors
-        const reports = this.reportService.generateHeistReports(
-          attack,
-          survivors,
-          lootPerMember
-        );
-
-        // Add to existing reports instead of replacing
-        crew.turnReports = crew.turnReports || [];
-        crew.turnReports.push(...reports);
-
-        this.gameState.updateCrew(crew);
-      });
-    }
-
-    // Generate reports for surviving hostile crew members
-    const hostileCrews = attack.attackingCrews.filter(
-      (ac) => ac.type === AttackType.Hostile
+    const lootPerMember = Math.floor(
+      attack.loot?.amount && attack.winners?.length
+        ? attack.loot.amount / attack.winners.length
+        : 0
     );
-    hostileCrews.forEach((hostileCrew) => {
-      const crew = this.gameState.getCrew(hostileCrew.crew.id);
-      if (!crew) return;
 
-      // Find survivors from this hostile crew
-      const survivors = hostileCrew.crewMembers;
+    for (const winner of attack.winners) {
+      const crew = this.findCrewByMemberId(winner.id);
+      if (!crew) continue;
 
-      // Only generate reports if there were survivors
-      if (survivors.length > 0) {
-        const reports = this.reportService.generateHostileReports(attack);
-
-        crew.turnReports = crew.turnReports || [];
-        crew.turnReports.push(...reports);
-
-        this.gameState.updateCrew(crew);
-      }
-    });
+      const report = this.reportService.generateMemberReport(
+        attack,
+        winner,
+        lootPerMember
+      );
+      crew.turnReports = crew.turnReports || [];
+      crew.turnReports.push(report);
+      this.gameState.updateCrew(crew);
+    }
   }
 
   private prepareNextTurn(): void {
@@ -483,44 +451,6 @@ export class GameService {
         member.jailTerm = casualty.jailTerm;
       }
 
-      // Generate report
-      const hasPhone = casualty.combatant.perks.some(
-        (p) => p.type === PerkType.Phone
-      );
-      const lastWords = hasPhone
-        ? this.generateLastWords(casualty.combatant)
-        : undefined;
-
-      let report: TurnReport;
-      if (hasPhone && casualty.died) {
-        // Generate a detailed report for crew members with phones who died
-        report = this.reportService.generatePhoneReport(
-          attack,
-          casualty.combatant,
-          lastWords!
-        );
-      } else {
-        report = {
-          crewMemberId: casualty.combatant.id,
-          message:
-            hasPhone && lastWords
-              ? lastWords
-              : `${casualty.combatant.name} was ${
-                  casualty.died
-                    ? "killed"
-                    : `arrested (${casualty.jailTerm} days)`
-                } during the operation.`,
-          details: {
-            causeOfDeath: casualty.died
-              ? "Killed in action"
-              : `Arrested for ${casualty.jailTerm} days`,
-            lastWords: lastWords,
-          },
-        };
-      }
-
-      crew.turnReports = crew.turnReports || [];
-      crew.turnReports.push(report);
       this.gameState.updateCrew(crew);
     });
 

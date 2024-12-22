@@ -160,10 +160,10 @@ export class CombatService {
       const currentAttacker = currentAttackers[currentAttackerIndex];
       console.log(`\n  🎯 ${currentAttacker.name}'s turn:`);
 
-      if (isGuards) {
-        // For guards, the same attacker keeps fighting until they die or all guards are dead
-        let keepFighting = true;
-        while (keepFighting && remainingDefenders > 0) {
+      // Same logic for both guards and crew combat
+      let keepFighting = true;
+      while (keepFighting && remainingDefenders > 0) {
+        if (isGuards) {
           console.log(
             `    ${currentAttacker.name} fights another guard (${remainingDefenders} remaining)`
           );
@@ -185,54 +185,47 @@ export class CombatService {
               (a) => a !== currentAttacker
             );
           }
-        }
-
-        // If attacker survived all their fights, add them to survivors
-        if (keepFighting || remainingDefenders === 0) {
-          survivors.push(currentAttacker);
-        }
-      } else {
-        // For crew vs crew, it's still one fight per pair
-        const defender = currentDefenders
-          ? currentDefenders[0]
-          : currentAttackers[currentAttackerIndex + 1];
-        if (!defender) break; // No defender to fight against
-
-        const result = this.fight1v1(currentAttacker, defender);
-
-        if (result.winner === currentAttacker) {
-          // Attacker won
-          console.log(
-            `    ✅ ${currentAttacker.name} won against ${defender.name}!`
-          );
-          // Don't add to survivors yet - they might still die in a later fight
-          casualties.push(result.loser);
-          // Remove the defeated defender
-          if (currentDefenders) {
-            currentDefenders = currentDefenders.filter((d) => d !== defender);
-            remainingDefenders = currentDefenders.length;
-          } else {
-            currentAttackers = currentAttackers.filter((a) => a !== defender);
-            remainingDefenders--;
-          }
         } else {
-          // Attacker lost
-          console.log(
-            `    ❌ ${currentAttacker.name} was defeated by ${defender.name}`
-          );
-          casualties.push(result.loser);
-          // Remove the defeated attacker
-          currentAttackers = currentAttackers.filter(
-            (a) => a !== currentAttacker
-          );
-          if (currentDefenders) {
-            // Don't add defender to survivors yet - they might still die in a later fight
+          // For crew vs crew, get next defender
+          const defender = currentDefenders![0];
+          if (!defender) break;
+
+          console.log(`    ${currentAttacker.name} fights ${defender.name}`);
+          const result = this.fight1v1(currentAttacker, defender);
+
+          if (result.winner === currentAttacker) {
+            // Attacker won
+            console.log(
+              `    ✅ ${currentAttacker.name} defeated ${defender.name}!`
+            );
+            casualties.push(result.loser);
+            // Remove the defeated defender
+            currentDefenders = currentDefenders!.filter((d) => d !== defender);
+            remainingDefenders--;
+            // Attacker continues to next defender if any remain
+            keepFighting = remainingDefenders > 0;
+          } else {
+            // Attacker lost
+            console.log(
+              `    ❌ ${currentAttacker.name} was defeated by ${defender.name}`
+            );
+            casualties.push(result.loser);
+            keepFighting = false;
+            // Remove the defeated attacker
+            currentAttackers = currentAttackers.filter(
+              (a) => a !== currentAttacker
+            );
           }
         }
       }
 
-      // Move to next attacker if in crew vs crew mode
-      if (!isGuards) {
+      // If attacker survived all their fights, add them to survivors
+      if (keepFighting || remainingDefenders === 0) {
+        survivors.push(currentAttacker);
+      }
+
+      // Move to next attacker if current one was defeated
+      if (!keepFighting) {
         currentAttackerIndex++;
         // Reset index if we've reached the end
         if (currentAttackerIndex >= currentAttackers.length) {
@@ -241,23 +234,19 @@ export class CombatService {
       }
     }
 
-    // Add survivors at the end of combat
-    if (!isGuards) {
-      // In crew vs crew, survivors are those still in the fight at the end
-      if (currentDefenders) {
-        survivors.push(...currentDefenders);
-      }
-      survivors.push(...currentAttackers);
-    } else {
-      // For guard fights, add any remaining attackers who didn't need to fight
-      if (remainingDefenders === 0) {
-        currentAttackers.forEach((attacker) => {
-          if (!survivors.includes(attacker)) {
-            console.log(`    ✨ ${attacker.name} survived without fighting`);
-            survivors.push(attacker);
-          }
-        });
-      }
+    // Add any remaining defenders to survivors in crew vs crew combat
+    if (!isGuards && currentDefenders && currentDefenders.length > 0) {
+      survivors.push(...currentDefenders);
+    }
+
+    // For guard fights, add any remaining attackers who didn't need to fight
+    if (isGuards && remainingDefenders === 0) {
+      currentAttackers.forEach((attacker) => {
+        if (!survivors.includes(attacker)) {
+          console.log(`    ✨ ${attacker.name} survived without fighting`);
+          survivors.push(attacker);
+        }
+      });
     }
 
     console.log("\n  📊 Combat Results:");
@@ -343,7 +332,6 @@ export class CombatService {
           if (i + 1 >= hostileWinners.length) {
             // Odd number of crews, this one gets a bye to next round
             console.log(`  🎟️ Crew ${i + 1} gets a bye to next round`);
-            nextRoundWinners.push(hostileWinners[i]);
             continue;
           }
 

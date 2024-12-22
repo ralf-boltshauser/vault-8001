@@ -1,6 +1,8 @@
 # Vault 8001
+## Done
+- [x] redo the fighting mechanic to be like SAP
 
-# ideas
+## Ideas
 - [ ] banks gain more cash over time
 - [ ] when a bank was successfully robbed, it's cash is reduced, and the guards are increased
 - [ ] different kind of crew members with different skills and costs
@@ -22,7 +24,6 @@
 - [ ] for final SNB heist there are two kind of tasks
   - [ ] global tasks like turning off security system
   - [ ] private tasks to increase your own odds (e.g. scouting for guards)
-- [ ] redo the fighting mechanic to be like SAP
 - [ ] major that can set amount of guards at a bank
   - [ ] major is assigned during an anonymous english auction
   - [ ] sticks for 5 turns
