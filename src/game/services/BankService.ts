@@ -4,12 +4,12 @@ import { generateId } from "../utils/helpers";
 
 export interface BankConfig {
   name: string;
-  capital: number;
   guardMin: number;
   guardMax: number;
   guardsCurrent: number;
   difficultyLevel: number;
   lootPotential: number;
+  minLootPotential: number;
   securityFeatures: string[];
 }
 
@@ -33,22 +33,22 @@ export class BankService {
     const defaultBanks: BankConfig[] = [
       {
         name: "Small Town Bank",
-        capital: 100000,
         guardMin: 2,
         guardMax: 4,
         guardsCurrent: 3,
         difficultyLevel: 1,
         lootPotential: 100000,
+        minLootPotential: 60000, // 60% of initial loot
         securityFeatures: ["Basic Alarm", "Cameras"],
       },
       {
         name: "City Central Bank",
-        capital: 1000000,
         guardMin: 5,
         guardMax: 10,
         guardsCurrent: 7,
         difficultyLevel: 3,
         lootPotential: 400000,
+        minLootPotential: 240000, // 60% of initial loot
         securityFeatures: [
           "Advanced Alarm",
           "Armed Guards",
@@ -89,9 +89,9 @@ export class BankService {
     const bank = this.getBank(attack.bank.id);
     if (!bank) return;
 
-    // Update bank's loot potential
+    // Update bank's loot potential, but don't go below minimum
     bank.lootPotential = Math.max(
-      0,
+      bank.minLootPotential,
       bank.lootPotential - (attack.loot?.amount || 0)
     );
 
@@ -128,15 +128,14 @@ export class BankService {
     // Default end of day processing
     // Can be overridden in derived classes for custom behavior
 
-    // Regenerate some loot potential
-    const lootRegeneration = Math.floor(bank.capital * 0.01); // 1% of capital
-    bank.lootPotential = Math.min(
-      bank.capital,
-      bank.lootPotential + lootRegeneration
-    );
+    // Regenerate loot potential by 10% of the gap between current and max potential
+    const maxPotential = bank.lootPotential * 2; // Maximum is double the initial potential
+    const lootGap = maxPotential - bank.lootPotential;
+    const lootRegeneration = Math.floor(lootGap * 0.1); // 10% of the gap
+    bank.lootPotential += lootRegeneration;
 
     // Adjust guard count towards base level
-    if (bank.guardsCurrent > bank.guardMin) {
+    if (bank.guardsCurrent > bank.guardMin && Math.random() < 0.5) {
       bank.guardsCurrent = Math.max(bank.guardMin, bank.guardsCurrent - 1);
     }
 

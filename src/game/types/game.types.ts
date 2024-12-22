@@ -124,12 +124,12 @@ export interface Crew {
 export interface Bank {
   id: string;
   name: string;
-  capital: number;
   guardMin: number;
   guardMax: number;
   guardsCurrent: number;
   difficultyLevel: number;
   lootPotential: number;
+  minLootPotential: number;
   securityFeatures: string[];
   attackHistory: Attack[];
 }
