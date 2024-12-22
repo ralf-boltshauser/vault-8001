@@ -34,6 +34,8 @@ export function CrewMemberCard({
   // Get border color based on status and planned action
   const getBorderColor = () => {
     if (member.status === CrewMemberStatus.Arrested) return "border-orange-500";
+    if (member.plannedAction?.type === Action.None) return "border-gray-700";
+    if (member.plannedAction?.type === Action.Work) return "border-green-500";
     if (member.plannedAction?.attackType === AttackType.Cooperative)
       return "border-blue-500";
     if (member.plannedAction?.attackType === AttackType.Hostile)

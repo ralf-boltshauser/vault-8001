@@ -1,9 +1,17 @@
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import { useWebSocket } from "../contexts/WebSocketContext";
 import {
   Action,
+  CrewMember,
   CrewMemberStatus,
   GamePhase,
   PerkType,
+  TurnReport,
 } from "../game/types/game.types";
 
 export function TurnSubmission() {
@@ -16,6 +24,32 @@ export function TurnSubmission() {
   const isReadyForNextPhase = playerCrew?.isReadyForNextPhase;
 
   if (!gameState || !playerCrew) return null;
+
+  const renderReport = (
+    report: TurnReport,
+    member: CrewMember | undefined,
+    index: number
+  ) => (
+    <div key={index} className="bg-gray-700 p-3 rounded text-gray-300">
+      <div className="flex items-center gap-2">
+        <span className="font-medium text-white">{member?.name}</span>
+        {member?.perks.some((p) => p.type === PerkType.Phone) && (
+          <span className="material-icons text-blue-400 text-sm">
+            smartphone
+          </span>
+        )}
+        <span>: </span>
+      </div>
+      <div className="mt-1">{report.message}</div>
+      {report.details.earnings !== undefined && report.details.earnings > 0 && (
+        <div className="text-green-400 mt-1">
+          Earned: ${report.details.earnings.toLocaleString()}
+        </div>
+      )}
+    </div>
+  );
+
+  const reports = playerCrew.turnReports || [];
 
   return (
     <div className="bg-gray-800 p-6 rounded-lg">
@@ -65,49 +99,42 @@ export function TurnSubmission() {
           </div>
         )}
 
-        {gameState.phase === GamePhase.Planning &&
-          playerCrew.turnReports &&
-          playerCrew.turnReports.length > 0 && (
-            <div className="space-y-2 mt-4">
-              <h3 className="text-lg font-semibold text-white">
-                Last Turn Reports
-              </h3>
-              {playerCrew.turnReports.map((report, index) => {
-                const member = playerCrew.crewMembers.find(
-                  (m) => m.id === report.crewMemberId
-                );
-                const hasPhone = member?.perks.some(
-                  (p) => p.type === PerkType.Phone
-                );
+        {gameState.phase === GamePhase.Planning && reports.length > 0 && (
+          <div className="space-y-2 mt-4">
+            <h3 className="text-lg font-semibold text-white">
+              Last Turn Reports
+            </h3>
 
-                return (
-                  <div
-                    key={index}
-                    className="bg-gray-700 p-3 rounded text-gray-300"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-white">
-                        {member?.name}
-                      </span>
-                      {hasPhone && (
-                        <span className="material-icons text-blue-400 text-sm">
-                          smartphone
-                        </span>
-                      )}
-                      <span>: </span>
-                    </div>
-                    <div className="mt-1">{report.message}</div>
-                    {report.details.earnings !== undefined &&
-                      report.details.earnings > 0 && (
-                        <div className="text-green-400 mt-1">
-                          Earned: ${report.details.earnings.toLocaleString()}
-                        </div>
-                      )}
+            {/* First report is always shown */}
+            {renderReport(
+              reports[0],
+              playerCrew.crewMembers.find(
+                (m) => m.id === reports[0].crewMemberId
+              ),
+              0
+            )}
+
+            {/* Rest of the reports are collapsible */}
+            {reports.length > 1 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 mt-2">
+                  <ChevronDown className="h-4 w-4" />
+                  Show {reports.length - 1} more reports
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-2 mt-2">
+                    {reports.slice(1).map((report, index) => {
+                      const member = playerCrew.crewMembers.find(
+                        (m) => m.id === report.crewMemberId
+                      );
+                      return renderReport(report, member, index + 1);
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

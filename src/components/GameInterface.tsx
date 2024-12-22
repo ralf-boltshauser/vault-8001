@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useWebSocket } from "../contexts/WebSocketContext";
-import { CrewMemberStatus } from "../game/types/game.types";
+import { Action, CrewMemberStatus } from "../game/types/game.types";
 import { BulkActionManager } from "./BulkActionManager";
 import { CrewMemberCard } from "./CrewMemberCard";
 import { HireMemberForm } from "./HireMemberForm";
@@ -8,7 +8,7 @@ import { JoinGame } from "./JoinGame";
 import { TurnSubmission } from "./TurnSubmission";
 
 export function GameInterface() {
-  const { connected, playerCrew } = useWebSocket();
+  const { connected, playerCrew, hireMember } = useWebSocket();
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
   if (!connected) {
@@ -35,6 +35,25 @@ export function GameInterface() {
 
   const selectAllHealthy = () => {
     setSelectedMembers(healthyMembers.map((member) => member.id));
+  };
+
+  const hasWithoutAction = playerCrew.crewMembers.some(
+    (member) =>
+      (!member.plannedAction || member.plannedAction.type == Action.None) &&
+      member.status === CrewMemberStatus.Healthy
+  );
+
+  const selectAllWithoutAction = () => {
+    setSelectedMembers(
+      playerCrew.crewMembers
+        .filter(
+          (member) =>
+            (!member.plannedAction ||
+              member.plannedAction.type == Action.None) &&
+            member.status === CrewMemberStatus.Healthy
+        )
+        .map((member) => member.id)
+    );
   };
 
   // Sort crew members: healthy first, then by number of perks
@@ -78,6 +97,14 @@ export function GameInterface() {
                   >
                     Select All Healthy
                   </button>
+                  {hasWithoutAction && (
+                    <button
+                      onClick={selectAllWithoutAction}
+                      className="px-3 py-1 rounded bg-gray-600 hover:bg-gray-700 text-white text-sm"
+                    >
+                      Select All Without Action
+                    </button>
+                  )}
                   {selectedMembers.length > 0 && (
                     <button
                       onClick={clearSelection}
@@ -88,6 +115,12 @@ export function GameInterface() {
                   )}
                 </div>
               )}
+              <button
+                onClick={() => hireMember()}
+                className="px-3 py-1 rounded bg-green-600 hover:bg-green-700 text-white text-sm"
+              >
+                Hire Member
+              </button>
             </div>
           </div>
 
