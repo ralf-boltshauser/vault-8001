@@ -1,11 +1,17 @@
 "use client";
 import { useWebSocket } from "@/contexts/WebSocketContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ChatThread from "./ChatThread";
 
 export default function ChatList() {
-  const { gameState, playerCrew } = useWebSocket();
+  const { gameState, playerCrew, markThreadAsRead } = useWebSocket();
   const [selectedThread, setSelectedThread] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedThread) {
+      markThreadAsRead(selectedThread);
+    }
+  }, [selectedThread, markThreadAsRead]);
 
   if (!gameState || !playerCrew) {
     return <div>Loading...</div>;

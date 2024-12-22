@@ -20,7 +20,8 @@ type MessageType =
   | "hireResult"
   | "buyPerkResult"
   | "actionResult"
-  | "gameState";
+  | "gameState"
+  | "markThreadAsRead";
 
 interface BaseMessage {
   type: MessageType;
@@ -89,15 +90,28 @@ interface ChatMessage extends BaseMessage {
 }
 
 type GameMessage =
-  | JoinMessage
-  | ReconnectMessage
-  | HireMemberMessage
-  | BuyPerkMessage
-  | AssignActionMessage
-  | ReadyMessage
-  | JoinPublicMessage
-  | ReconnectPublicMessage
-  | ChatMessage;
+  | { type: "join"; data: { playerName: string; playerId?: string } }
+  | { type: "reconnect"; data: { playerName: string; playerId: string } }
+  | { type: "joinPublic"; data: { playerId?: string } }
+  | { type: "reconnectPublic"; data: { playerId?: string } }
+  | { type: "hireMember"; data: {} }
+  | {
+      type: "buyPerk";
+      data: { memberId: string; perkType: PerkType };
+    }
+  | {
+      type: "assignAction";
+      data: { memberId: string; action: PlannedAction };
+    }
+  | { type: "readyForNextPhase"; data: {} }
+  | {
+      type: "chat";
+      data: { threadId: string; message: { content: string } };
+    }
+  | {
+      type: "markThreadAsRead";
+      data: { threadId: string; readerId: string };
+    };
 
 const wss = new WebSocketServer({ port: 8001 });
 const gameService = GameService.getInstance();
@@ -230,6 +244,13 @@ wss.on("connection", (ws: WebSocket) => {
               threadId,
               msg.data.message.content
             );
+            gameService.broadcastGameState();
+          }
+          break;
+
+        case "markThreadAsRead":
+          if (playerId) {
+            chatService.markThreadAsRead(msg.data.threadId, playerId);
             gameService.broadcastGameState();
           }
           break;

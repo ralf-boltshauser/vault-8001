@@ -11,17 +11,15 @@ export default function ChatThread({ threadId }: ChatThreadProps) {
   const [message, setMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const thread = [...gameState.chatThreads.values()].find(
-    ([id, thread]) => id === threadId
-  )?.[1];
+  const thread = gameState?.chatThreads.find(([id]) => id === threadId)?.[1];
 
-  const otherParticipants = [...thread?.participants].filter(
-    (p) => p !== playerCrew?.id
-  );
+  const otherParticipants =
+    thread?.participants.filter((p) => p !== playerCrew?.id) || [];
 
-  const otherCrews = [...gameState.crews.values()]
-    .filter(([_, crew]) => otherParticipants.includes(crew.id))
-    .map(([_, crew]) => crew);
+  const otherCrews =
+    gameState?.crews
+      .filter(([_, crew]) => otherParticipants.includes(crew.id))
+      .map(([_, crew]) => crew) || [];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -125,6 +123,7 @@ export default function ChatThread({ threadId }: ChatThreadProps) {
             onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
             placeholder="Type a message..."
             className="flex-1 p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 placeholder-gray-400"
+            autoFocus
           />
           <button
             onClick={handleSendMessage}

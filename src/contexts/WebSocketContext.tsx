@@ -1,5 +1,12 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   Bank,
   ChatThread,
@@ -36,6 +43,8 @@ interface WebSocketContextType {
   assignAction: (memberId: string, action: PlannedAction) => void;
   submitTurn: () => void;
   sendMessage: (message: Message) => void;
+  markThreadAsRead: (threadId: string) => void;
+  unreadMessagesLength: number;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
@@ -233,6 +242,34 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const markThreadAsRead = useCallback(
+    (threadId: string) => {
+      if (socket && connected && playerId) {
+        socket.send(
+          JSON.stringify({
+            type: "markThreadAsRead",
+            data: {
+              threadId,
+              readerId: playerId,
+            },
+          })
+        );
+      }
+    },
+    [socket, connected, playerId]
+  );
+
+  const unreadMessagesLength = useMemo(() => {
+    if (!gameState?.chatThreads) return 0;
+    return Array.from(gameState.chatThreads.values())
+      .filter(([id, thread]) => thread.participants.includes(playerId))
+      .filter(([id, thread]) =>
+        thread.messages.some(
+          (message) => !message.isRead && message.senderId !== playerId
+        )
+      ).length;
+  }, [gameState, playerId]);
+
   const playerCrew =
     playerId && gameState
       ? gameState.crews.find(([id]) => id === playerId)?.[1]
@@ -246,12 +283,14 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         playerId,
         playerCrew,
         gameState,
+        unreadMessagesLength,
         connect,
         hireMember,
         buyPerk,
         assignAction,
         submitTurn,
         sendMessage,
+        markThreadAsRead,
       }}
     >
       {children}

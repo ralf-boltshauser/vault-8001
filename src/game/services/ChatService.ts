@@ -112,7 +112,7 @@ export class ChatService {
     const thread = this.gameState.getChatThread(threadId);
     if (!thread) return;
 
-    thread.information.forEach((message) => {
+    thread.messages.forEach((message) => {
       if (message.senderId !== participantId) {
         message.isRead = true;
       }
