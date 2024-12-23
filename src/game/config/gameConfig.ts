@@ -52,10 +52,20 @@ export const GAME_CONFIG = {
   // Default Banks
   DEFAULT_BANKS: [
     {
-      name: "Small Town Bank",
+      name: "Small Town Bank North",
       guardMin: 2,
       guardMax: 4,
-      guardsCurrent: 3,
+      guardsCurrent: 2,
+      difficultyLevel: 1,
+      lootPotential: 100000,
+      minLootPotential: 60000,
+      securityFeatures: ["Basic Alarm", "Cameras"],
+    },
+    {
+      name: "Small Town Bank South",
+      guardMin: 2,
+      guardMax: 4,
+      guardsCurrent: 2,
       difficultyLevel: 1,
       lootPotential: 100000,
       minLootPotential: 60000,
