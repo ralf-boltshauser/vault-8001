@@ -68,46 +68,46 @@ export class GameService {
 
   private initializeDefaultPlayers(): void {
     // Create Ralf's crew
-    const ralf = this.gameState.addCrew("Ralf's Crew");
-    ralf.capital = 200000;
-    ralf.crewMembers = [
-      {
-        id: generateId(),
-        name: "Shadow-106",
-        perks: [],
-        action: Action.None,
-        status: CrewMemberStatus.Healthy,
-      },
-      {
-        id: generateId(),
-        name: "Wolf-346",
-        perks: [],
-        action: Action.None,
-        status: CrewMemberStatus.Healthy,
-      },
-      {
-        id: generateId(),
-        name: "Fox-927",
-        perks: [],
-        action: Action.None,
-        status: CrewMemberStatus.Healthy,
-      },
-      {
-        id: generateId(),
-        name: "Echo-413",
-        perks: [],
-        action: Action.None,
-        status: CrewMemberStatus.Healthy,
-      },
-      {
-        id: generateId(),
-        name: "Raven-410",
-        perks: [],
-        action: Action.None,
-        status: CrewMemberStatus.Healthy,
-      },
-    ];
-    this.gameState.updateCrew(ralf);
+    // const ralf = this.gameState.addCrew("Ralf's Crew");
+    // ralf.capital = 200000;
+    // ralf.crewMembers = [
+    //   {
+    //     id: generateId(),
+    //     name: "Shadow-106",
+    //     perks: [],
+    //     action: Action.None,
+    //     status: CrewMemberStatus.Healthy,
+    //   },
+    //   {
+    //     id: generateId(),
+    //     name: "Wolf-346",
+    //     perks: [],
+    //     action: Action.None,
+    //     status: CrewMemberStatus.Healthy,
+    //   },
+    //   {
+    //     id: generateId(),
+    //     name: "Fox-927",
+    //     perks: [],
+    //     action: Action.None,
+    //     status: CrewMemberStatus.Healthy,
+    //   },
+    //   {
+    //     id: generateId(),
+    //     name: "Echo-413",
+    //     perks: [],
+    //     action: Action.None,
+    //     status: CrewMemberStatus.Healthy,
+    //   },
+    //   {
+    //     id: generateId(),
+    //     name: "Raven-410",
+    //     perks: [],
+    //     action: Action.None,
+    //     status: CrewMemberStatus.Healthy,
+    //   },
+    // ];
+    // this.gameState.updateCrew(ralf);
   }
 
   // Turn Management
