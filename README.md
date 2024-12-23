@@ -44,3 +44,4 @@
 ## Bugs
 - [ ] hostile crew members with phone have no effect
 - [x] coop crew members always bring back 0
+- [ ] default working
