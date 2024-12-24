@@ -2,7 +2,9 @@
 import { Button } from "@/components/ui/button";
 import { useWebSocket } from "@/contexts/WebSocketContext";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { ProposeMoneyTransfer } from "./ProposeMoneyTransfer";
+import { useCommandHandler } from "./commands/CommandHandler";
 import { InformationPieceRenderer } from "./information-pieces/InformationPieceRenderer";
 import { ChatMessage } from "./messages/ChatMessage";
 
@@ -14,6 +16,7 @@ export default function ChatThread({ threadId }: ChatThreadProps) {
   const { gameState, playerCrew, sendMessage } = useWebSocket();
   const [message, setMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const handleCommand = useCommandHandler();
 
   const thread = gameState?.chatThreads.find(([id]) => id === threadId)?.[1];
 
@@ -36,16 +39,29 @@ export default function ChatThread({ threadId }: ChatThreadProps) {
   const handleSendMessage = () => {
     if (!message.trim()) return;
 
-    const newMessage = {
-      content: message,
-    };
-
-    sendMessage({
+    // Try to handle as command first
+    const wasCommand = handleCommand({
+      content: message.trim(),
       threadId,
-      message: newMessage,
+      onCommandProcessed: () => {
+        setMessage("");
+        toast.success("Command executed");
+      },
+      onError: (error) => {
+        toast.error(error);
+      },
     });
 
-    setMessage("");
+    // If not a command, send as regular message
+    if (!wasCommand) {
+      sendMessage({
+        threadId,
+        message: {
+          content: message,
+        },
+      });
+      setMessage("");
+    }
   };
 
   // Combine messages and information pieces, sort by timestamp
@@ -97,7 +113,7 @@ export default function ChatThread({ threadId }: ChatThreadProps) {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-            placeholder="Type a message..."
+            placeholder="Type a message or command (e.g. 'send 200k')..."
             className="flex-1 p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 placeholder-gray-400"
             autoFocus
           />

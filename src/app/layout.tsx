@@ -1,3 +1,4 @@
+import { Toaster } from "@/components/ui/sonner";
 import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
@@ -25,6 +26,7 @@ export default function RootLayout({
       </head>
       <body className={inter.className + " m-5 dark"}>
         <WebSocketProvider>{children}</WebSocketProvider>
+        <Toaster />
       </body>
     </html>
   );
