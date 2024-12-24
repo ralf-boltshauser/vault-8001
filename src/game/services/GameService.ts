@@ -513,7 +513,11 @@ export class GameService {
         id: generateId(),
         name: this.generateRandomName(),
         perks: [],
-        action: Action.None,
+        action: Action.Work,
+        plannedAction: {
+          type: Action.Work,
+          attackType: AttackType.Hostile,
+        },
         status: CrewMemberStatus.Healthy,
       };
 

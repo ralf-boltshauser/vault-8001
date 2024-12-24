@@ -42,9 +42,6 @@
 - [ ] players can just send money between each other
 
 ## Bugs
-- [ ] hostile crew members with phone have no effect
-- [ ] default working
-- [ ] phone not working if hostile crew fight
 - [ ] who wrote me also show in chat
 - [ ] robin suddenly out
 - [ ] moving money is important
