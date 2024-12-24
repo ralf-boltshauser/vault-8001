@@ -313,6 +313,25 @@ export class GameService {
   }
 
   private generateReports(attack: Attack): void {
+    if (attack.casualties) {
+      // only write report for phone members
+      attack.casualties
+        .filter((c) => c.perks.some((p) => p.type === PerkType.Phone))
+        .forEach((casualty) => {
+          const crew = this.findCrewByMemberId(casualty.id);
+          if (!crew) return;
+
+          const report = this.reportService.generateMemberReport(
+            attack,
+            casualty,
+            0
+          );
+          crew.turnReports = crew.turnReports || [];
+          crew.turnReports.push(report);
+          this.gameState.updateCrew(crew);
+        });
+    }
+
     if (!attack.winners || attack.winners.length == 0) {
       if (attack.emptySurvivors && attack.emptySurvivors.length > 0) {
         attack.emptySurvivors.forEach((member) => {
@@ -584,7 +603,9 @@ export class GameService {
     // Store winners in attack object
     attack.winners = combatResult.winners;
     attack.emptySurvivors = combatResult.emptySurvivors;
-
+    attack.casualties = combatResult.casualties
+      .filter((c) => c.type === "crew")
+      .map((c) => c.combatant);
     // Process casualties
     combatResult.casualties.forEach((casualty) => {
       // Skip guard casualties

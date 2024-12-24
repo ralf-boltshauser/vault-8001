@@ -83,6 +83,7 @@ export class GameState {
   // Setters
   addCrew(name: string): Crew {
     // Use specific IDs for Ralf
+    console.log("Adding crew", name);
     let id = generateId();
     if (name === "Ralf's Crew") {
       id = "ykb07swcgaq";

@@ -164,6 +164,7 @@ export interface Attack {
   outcome?: AttackOutcome;
   winners?: CrewMember[];
   emptySurvivors?: CrewMember[];
+  casualties?: CrewMember[];
   loot?: {
     type: string;
     amount: number;
