@@ -2,7 +2,11 @@ import process from "process";
 import { WebSocket, WebSocketServer } from "ws";
 import { ChatService } from "../game/services/ChatService.js";
 import { GameService } from "../game/services/GameService.js";
-import { PerkType, PlannedAction } from "../game/types/game.types.js";
+import {
+  InteractionType,
+  PerkType,
+  PlannedAction,
+} from "../game/types/game.types.js";
 
 type MessageType =
   | "join"
@@ -21,7 +25,8 @@ type MessageType =
   | "buyPerkResult"
   | "actionResult"
   | "gameState"
-  | "markThreadAsRead";
+  | "markThreadAsRead"
+  | "interaction";
 
 interface BaseMessage {
   type: MessageType;
@@ -89,6 +94,18 @@ interface ChatMessage extends BaseMessage {
   };
 }
 
+interface InteractionMessage extends BaseMessage {
+  type: "interaction";
+  data: {
+    recipientId: string;
+    interactionType: InteractionType;
+    payload: {
+      amount?: number;
+      transferId?: string;
+    };
+  };
+}
+
 type GameMessage =
   | { type: "join"; data: { playerName: string; playerId?: string } }
   | { type: "reconnect"; data: { playerName: string; playerId: string } }
@@ -111,6 +128,17 @@ type GameMessage =
   | {
       type: "markThreadAsRead";
       data: { threadId: string; readerId: string };
+    }
+  | {
+      type: "interaction";
+      data: {
+        recipientId: string;
+        interactionType: InteractionType;
+        payload: {
+          amount?: number;
+          transferId?: string;
+        };
+      };
     };
 
 const wss = new WebSocketServer({ port: 8001 });
@@ -245,6 +273,60 @@ wss.on("connection", (ws: WebSocket) => {
               msg.data.message.content
             );
             gameService.broadcastGameState();
+          }
+          break;
+
+        case "interaction":
+          if (playerId) {
+            try {
+              switch (msg.data.interactionType) {
+                case InteractionType.MoneyTransfer:
+                  if (!msg.data.payload.amount) {
+                    throw new Error("Amount is required for money transfer");
+                  }
+                  chatService.proposeMoneyTransfer(
+                    playerId,
+                    msg.data.recipientId,
+                    msg.data.payload.amount
+                  );
+                  gameService.broadcastGameState();
+                  break;
+                case InteractionType.AcceptMoneyTransfer:
+                  if (!msg.data.payload.transferId) {
+                    throw new Error(
+                      "Transfer ID is required for accepting money"
+                    );
+                  }
+                  chatService.acceptMoneyTransfer(
+                    playerId,
+                    msg.data.payload.transferId
+                  );
+                  gameService.broadcastGameState();
+                  break;
+                case InteractionType.RejectMoneyTransfer:
+                  if (!msg.data.payload.transferId) {
+                    throw new Error(
+                      "Transfer ID is required for rejecting money"
+                    );
+                  }
+                  chatService.rejectMoneyTransfer(
+                    playerId,
+                    msg.data.payload.transferId
+                  );
+                  gameService.broadcastGameState();
+                  break;
+                default:
+                  throw new Error("Unknown interaction type");
+              }
+            } catch (err) {
+              const error = err as Error;
+              ws.send(
+                JSON.stringify({
+                  type: "error",
+                  data: { message: error.message },
+                })
+              );
+            }
           }
           break;
 

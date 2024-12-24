@@ -43,5 +43,4 @@
 
 ## Bugs
 - [ ] who wrote me also show in chat
-- [ ] robin suddenly out
 - [ ] moving money is important

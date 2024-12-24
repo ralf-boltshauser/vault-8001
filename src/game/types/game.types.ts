@@ -194,7 +194,8 @@ export type InformationPieceType =
   | "bank_evidence" // Info about bank security, schedules, etc.
   | "crew_evidence" // Info about other crews' activities
   | "heist_evidence" // Evidence of past heists
-  | "spy_report"; // Special spy intel
+  | "spy_report" // Special spy intel
+  | "interaction"; // New type for interactive elements
 
 export interface BaseInformationPiece {
   id: string;
@@ -250,12 +251,45 @@ export interface SpyReportPiece extends BaseInformationPiece {
   };
 }
 
+export enum InteractionStatus {
+  Pending = "pending",
+  Accepted = "accepted",
+  Rejected = "rejected",
+  Expired = "expired",
+  Cancelled = "cancelled",
+  Failed = "failed",
+}
+
+export enum InteractionType {
+  MoneyTransfer = "money_transfer",
+  AcceptMoneyTransfer = "accept_money_transfer",
+  RejectMoneyTransfer = "reject_money_transfer",
+  // Can be extended with other types like:
+  // TradeProposal = "trade_proposal",
+  // AllianceRequest = "alliance_request",
+  // etc.
+}
+
+export interface InteractionPiece extends BaseInformationPiece {
+  type: "interaction";
+  interactionType: InteractionType;
+  status: InteractionStatus;
+  expiresAt?: number;
+}
+
+export interface MoneyTransferPiece extends InteractionPiece {
+  interactionType: InteractionType.MoneyTransfer;
+  amount: number;
+  recipientId: string;
+}
+
 export type InformationPiece =
   | ChatMessagePiece
   | BankEvidencePiece
   | CrewEvidencePiece
   | HeistEvidencePiece
-  | SpyReportPiece;
+  | SpyReportPiece
+  | MoneyTransferPiece;
 
 export interface ChatThread {
   id: string;

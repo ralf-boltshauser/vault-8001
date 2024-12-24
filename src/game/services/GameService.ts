@@ -21,6 +21,7 @@ import {
 } from "../types/game.types.js";
 import { generateId } from "../utils/helpers.js";
 import { BankService } from "./BankService";
+import { ChatService } from "./ChatService";
 import { CombatService } from "./CombatService";
 import { ReportService } from "./ReportService";
 
@@ -48,6 +49,7 @@ export class GameService {
   private playerConnections: Map<string, PlayerConnection> = new Map();
   private publicConnections: Set<WebSocket> = new Set();
   private disconnectedPlayers: Set<string> = new Set();
+  private chatService: ChatService;
   private combatService: CombatService;
   private reportService: ReportService;
   private bankService: BankService;
@@ -58,6 +60,7 @@ export class GameService {
     this.combatService = new CombatService();
     this.reportService = new ReportService();
     this.bankService = BankService.getInstance();
+    this.chatService = ChatService.getInstance();
     this.initializeDefaultPlayers();
     this.initializeObservability();
   }
@@ -438,7 +441,10 @@ export class GameService {
     // Initialize chat threads with all existing players
     this.gameState.getAllCrews().forEach((otherCrew) => {
       if (otherCrew.id !== crew.id) {
-        const threadId = generateId();
+        const threadId = this.chatService.generateThreadId(
+          crew.id,
+          otherCrew.id
+        );
         const thread: ChatThread = {
           id: threadId,
           participants: [crew.id, otherCrew.id],

@@ -4,6 +4,9 @@ import {
   ChatThread,
   InformationPiece,
   InformationPieceType,
+  InteractionStatus,
+  InteractionType,
+  MoneyTransferPiece,
 } from "../types/game.types";
 import { generateId } from "../utils/helpers";
 
@@ -32,6 +35,12 @@ export class ChatService {
 
     if (existingThread) {
       return existingThread;
+    }
+
+    const otherThreadId = this.generateThreadId(participant2Id, participant1Id);
+    const otherThread = this.gameState.getChatThread(otherThreadId);
+    if (otherThread) {
+      return otherThread;
     }
 
     const newThread: ChatThread = {
@@ -96,6 +105,108 @@ export class ChatService {
     return completeInformation;
   }
 
+  public proposeMoneyTransfer(
+    senderId: string,
+    recipientId: string,
+    amount: number
+  ): MoneyTransferPiece {
+    if (amount <= 0) {
+      throw new Error("Transfer amount must be positive");
+    }
+
+    const senderCrew = this.gameState.getCrew(senderId);
+    if (!senderCrew) {
+      throw new Error("Sender crew not found");
+    }
+
+    if (senderCrew.capital < amount) {
+      throw new Error("Insufficient funds for transfer");
+    }
+
+    const transfer: Omit<MoneyTransferPiece, "id" | "timestamp" | "isRead"> = {
+      type: "interaction",
+      interactionType: InteractionType.MoneyTransfer,
+      senderId,
+      recipientId,
+      amount,
+      status: InteractionStatus.Pending,
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours expiry
+    };
+
+    return this.sendInformation<MoneyTransferPiece>(
+      senderId,
+      recipientId,
+      transfer
+    );
+  }
+
+  public acceptMoneyTransfer(recipientId: string, transferId: string): void {
+    const transfer = this.findMoneyTransfer(transferId);
+    if (!transfer) {
+      throw new Error("Transfer not found");
+    }
+
+    if (transfer.recipientId !== recipientId) {
+      throw new Error("Not authorized to accept this transfer");
+    }
+
+    if (transfer.status !== InteractionStatus.Pending) {
+      throw new Error("Transfer is not pending");
+    }
+
+    const senderCrew = this.gameState.getCrew(transfer.senderId);
+    const recipientCrew = this.gameState.getCrew(recipientId);
+
+    if (!senderCrew || !recipientCrew) {
+      throw new Error("Crew not found");
+    }
+
+    if (senderCrew.capital < transfer.amount) {
+      transfer.status = InteractionStatus.Failed;
+      throw new Error("Sender has insufficient funds");
+    }
+
+    // Process the transfer
+    senderCrew.capital -= transfer.amount;
+    recipientCrew.capital += transfer.amount;
+    transfer.status = InteractionStatus.Accepted;
+
+    // Update game state
+    this.gameState.updateCrew(senderCrew);
+    this.gameState.updateCrew(recipientCrew);
+  }
+
+  public rejectMoneyTransfer(recipientId: string, transferId: string): void {
+    const transfer = this.findMoneyTransfer(transferId);
+    if (!transfer) {
+      throw new Error("Transfer not found");
+    }
+
+    if (transfer.recipientId !== recipientId) {
+      throw new Error("Not authorized to reject this transfer");
+    }
+
+    if (transfer.status !== InteractionStatus.Pending) {
+      throw new Error("Transfer is not pending");
+    }
+
+    transfer.status = InteractionStatus.Rejected;
+  }
+
+  private findMoneyTransfer(
+    transferId: string
+  ): MoneyTransferPiece | undefined {
+    for (const thread of this.gameState.getAllChatThreads()) {
+      const transfer = thread.information.find(
+        (info): info is MoneyTransferPiece =>
+          info.type === "interaction" &&
+          info.interactionType === InteractionType.MoneyTransfer &&
+          info.id === transferId
+      );
+      if (transfer) return transfer;
+    }
+  }
+
   // Message Reading
   public markAsRead(threadId: string, messageId: string): void {
     const thread = this.gameState.getChatThread(threadId);
@@ -154,7 +265,7 @@ export class ChatService {
   }
 
   // Helper Methods
-  private generateThreadId(
+  public generateThreadId(
     participant1Id: string,
     participant2Id: string
   ): string {

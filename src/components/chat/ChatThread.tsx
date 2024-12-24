@@ -1,6 +1,10 @@
 "use client";
+import { Button } from "@/components/ui/button";
 import { useWebSocket } from "@/contexts/WebSocketContext";
 import { useEffect, useRef, useState } from "react";
+import { ProposeMoneyTransfer } from "./ProposeMoneyTransfer";
+import { InformationPieceRenderer } from "./information-pieces/InformationPieceRenderer";
+import { ChatMessage } from "./messages/ChatMessage";
 
 interface ChatThreadProps {
   threadId: string;
@@ -23,7 +27,7 @@ export default function ChatThread({ threadId }: ChatThreadProps) {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [thread?.messages]);
+  }, [thread?.messages, thread?.information]);
 
   if (!thread || !gameState || !playerCrew) {
     return <div>Loading...</div>;
@@ -44,7 +48,11 @@ export default function ChatThread({ threadId }: ChatThreadProps) {
     setMessage("");
   };
 
-  console.log(thread);
+  // Combine messages and information pieces, sort by timestamp
+  const allItems = [
+    ...thread.messages.map((msg) => ({ type: "message", data: msg })),
+    ...thread.information.map((info) => ({ type: "information", data: info })),
+  ].sort((a, b) => a.data.timestamp - b.data.timestamp);
 
   return (
     <div className="h-full flex flex-col bg-gray-900">
@@ -55,36 +63,30 @@ export default function ChatThread({ threadId }: ChatThreadProps) {
         </h2>
       </div>
 
-      {/* Messages */}
+      {/* Messages and Information Pieces */}
       <div className="flex-1 overflow-y-auto p-4 bg-gray-900">
-        {thread.messages.map((msg, index) => {
-          const isOwnMessage = msg.senderId === playerCrew.id;
+        {allItems.map((item) => {
+          const isOwnMessage = item.data.senderId === playerCrew.id;
+
+          if (item.type === "message") {
+            return (
+              <ChatMessage
+                key={item.data.id}
+                message={item.data}
+                isOwnMessage={isOwnMessage}
+              />
+            );
+          }
 
           return (
-            <div key={msg.id}>
-              <div
-                key={msg.id}
-                className={`mb-4 flex ${
-                  isOwnMessage ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[70%] rounded-lg p-3 ${
-                    isOwnMessage
-                      ? "bg-blue-600 text-gray-100"
-                      : "bg-gray-800 text-gray-100"
-                  }`}
-                >
-                  <p>{msg.content}</p>
-                  <p className="text-xs mt-1 text-gray-400">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <InformationPieceRenderer
+              key={item.data.id}
+              piece={item.data}
+              isOwnMessage={isOwnMessage}
+            />
           );
         })}
-        <div ref={messagesEndRef} key={thread.id + "end"} />
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}
@@ -99,12 +101,15 @@ export default function ChatThread({ threadId }: ChatThreadProps) {
             className="flex-1 p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 placeholder-gray-400"
             autoFocus
           />
-          <button
+          <Button
             onClick={handleSendMessage}
             className="px-4 py-2 bg-blue-600 text-gray-100 rounded-lg hover:bg-blue-700 focus:outline-none transition-colors duration-200"
           >
             Send
-          </button>
+          </Button>
+          {otherCrews[0] && (
+            <ProposeMoneyTransfer recipientId={otherCrews[0].id} />
+          )}
         </div>
       </div>
     </div>

@@ -12,6 +12,7 @@ import {
   ChatThread,
   Crew,
   GamePhase,
+  InteractionType,
   PerkType,
   PlannedAction,
 } from "../game/types/game.types";
@@ -31,6 +32,12 @@ interface Message {
   };
 }
 
+interface InteractionPayload {
+  amount?: number;
+  transferId?: string;
+  // Add other payload types here as needed
+}
+
 interface WebSocketContextType {
   connected: boolean;
   connecting: boolean;
@@ -44,6 +51,11 @@ interface WebSocketContextType {
   submitTurn: () => void;
   sendMessage: (message: Message) => void;
   markThreadAsRead: (threadId: string) => void;
+  sendInteraction: (
+    recipientId: string,
+    interactionType: InteractionType,
+    payload: InteractionPayload
+  ) => void;
   unreadMessagesLength: number;
 }
 
@@ -242,6 +254,28 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const sendInteraction = useCallback(
+    (
+      recipientId: string,
+      interactionType: InteractionType,
+      payload: InteractionPayload
+    ) => {
+      if (socket && connected && playerId) {
+        socket.send(
+          JSON.stringify({
+            type: "interaction",
+            data: {
+              recipientId,
+              interactionType,
+              payload,
+            },
+          })
+        );
+      }
+    },
+    [socket, connected, playerId]
+  );
+
   const markThreadAsRead = useCallback(
     (threadId: string) => {
       if (socket && connected && playerId) {
@@ -290,6 +324,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         assignAction,
         submitTurn,
         sendMessage,
+        sendInteraction,
         markThreadAsRead,
       }}
     >

@@ -23,7 +23,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className={inter.className + " m-5"}>
+      <body className={inter.className + " m-5 dark"}>
         <WebSocketProvider>{children}</WebSocketProvider>
       </body>
     </html>
