@@ -1,3 +1,4 @@
+import fs from "fs";
 import { WebSocket } from "ws";
 import { calculateWorkSalary, GAME_CONFIG } from "../config/gameConfig";
 import { GameState } from "../models/GameState.js";
@@ -50,6 +51,7 @@ export class GameService {
   private combatService: CombatService;
   private reportService: ReportService;
   private bankService: BankService;
+  private gameId: string | undefined;
 
   private constructor() {
     this.gameState = GameState.getInstance();
@@ -57,6 +59,7 @@ export class GameService {
     this.reportService = new ReportService();
     this.bankService = BankService.getInstance();
     this.initializeDefaultPlayers();
+    this.initializeObservability();
   }
 
   static getInstance(): GameService {
@@ -64,6 +67,25 @@ export class GameService {
       GameService.instance = new GameService();
     }
     return GameService.instance;
+  }
+
+  private initializeObservability(): void {
+    // generate a random id for this game and then create a json file with that id
+    this.gameId = generateId();
+    const gameState = this.gameState.serialize();
+    if (!fs.existsSync("./observability")) {
+      fs.mkdirSync("./observability");
+    }
+
+    fs.writeFileSync(
+      `./observability/${this.gameId}-gameStates.json`,
+      JSON.stringify([gameState])
+    );
+
+    fs.writeFileSync(
+      `./observability/${this.gameId}-crews.json`,
+      JSON.stringify([])
+    );
   }
 
   private initializeDefaultPlayers(): void {
@@ -136,6 +158,45 @@ export class GameService {
   private areAllCrewsReady(): boolean {
     return Array.from(this.gameState.getAllCrews()).every(
       (crew) => crew.isReadyForNextPhase
+    );
+  }
+
+  private observabilityStep(): void {
+    const crews = this.gameState.getAllCrews();
+    const data: { id: string; name: string; turn: number; capital: number }[] =
+      [];
+    crews.forEach((crew) => {
+      let capital = crew.capital;
+      // now calculate all crew members with their cost and all perks they own with their cost
+      for (const crewMember of crew.crewMembers.filter(
+        (member) => member.status === CrewMemberStatus.Healthy
+      )) {
+        capital += GAME_CONFIG.CREW_MEMBER_COST;
+        for (const perk of crewMember.perks) {
+          capital += PERKS[perk.type].cost;
+        }
+      }
+      data.push({
+        id: crew.id,
+        name: crew.name,
+        turn: this.gameState.getTurnNumber(),
+        capital: capital,
+      });
+    });
+    const pastData = JSON.parse(
+      fs.readFileSync(`./observability/${this.gameId}-crews.json`, "utf8")
+    );
+    fs.writeFileSync(
+      `./observability/${this.gameId}-crews.json`,
+      JSON.stringify([...pastData, data])
+    );
+
+    const gameStates = JSON.parse(
+      fs.readFileSync(`./observability/${this.gameId}-gameStates.json`, "utf8")
+    );
+    fs.writeFileSync(
+      `./observability/${this.gameId}-gameStates.json`,
+      JSON.stringify([...gameStates, this.gameState.serialize()])
     );
   }
 
@@ -297,6 +358,8 @@ export class GameService {
   private prepareNextTurn(): void {
     // Process end of day for banks
     this.bankService.processEndOfDay();
+
+    this.observabilityStep();
 
     // Reset crew ready states
     this.gameState.getAllCrews().forEach((crew) => {
