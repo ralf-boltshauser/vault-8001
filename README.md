@@ -3,7 +3,9 @@
 - [x] redo the fighting mechanic to be like SAP
 
 ## Todos
-- [ ] build observability of the game that i can at every turn track how much capital or value a player has to then later investigate what are exploitable patterns
+- [ ] settings aka resetting the game and not needing to clear the browser storage
+- [ ] dynamic banks based on amount of players
+- [ ] ensure that in the early phase the gap is not opening between players
 
 ## Ideas
 - [ ] banks gain more cash over time
@@ -39,8 +41,14 @@
   - [ ] sticks for 5 turns
   - [ ] major can stop his term early
 - [ ] you can tip off banks and gain money if your bid is correct
-- [ ] players can just send money between each other
+- [ ] reset whole player standing after looting smb aka being raided and needing to restart from the ground up to gain more money
+- [ ] a map where crews are placed in the actual city and they can fight against each other and gain more control over the city and also over buildings in the city which they can use to wash money
+- [ ] Public Events: Special high-risk, high-reward banks or heists are announced, drawing all players into competitive situations.
+- [ ] players can play as the city and defend banks etc
+- [ ] elite troops that have higher odds of success, but also higher costs
+- [ ] more a mechanic to upgrade your crew instead of just buying new ones
+
+
 
 ## Bugs
 - [ ] who wrote me also show in chat
-- [ ] moving money is important
