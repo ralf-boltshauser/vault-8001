@@ -3,6 +3,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { ChatService } from "../game/services/ChatService.js";
 import { GameService } from "../game/services/GameService.js";
 import {
+  AdminAction,
   InteractionType,
   PerkType,
   PlannedAction,
@@ -26,7 +27,8 @@ type MessageType =
   | "actionResult"
   | "gameState"
   | "markThreadAsRead"
-  | "interaction";
+  | "interaction"
+  | "admin";
 
 interface BaseMessage {
   type: MessageType;
@@ -106,6 +108,19 @@ interface InteractionMessage extends BaseMessage {
   };
 }
 
+interface AdminMessage extends BaseMessage {
+  type: "admin";
+  data: {
+    action: AdminAction;
+    payload?: {
+      minPlayers?: number;
+      maxPlayers?: number;
+      playerId?: string;
+      // Extensible for more action-specific payloads
+    };
+  };
+}
+
 type GameMessage =
   | { type: "join"; data: { playerName: string; playerId?: string } }
   | { type: "reconnect"; data: { playerName: string; playerId: string } }
@@ -139,6 +154,17 @@ type GameMessage =
           transferId?: string;
         };
       };
+    }
+  | {
+      type: "admin";
+      data: {
+        action: AdminAction;
+        payload?: {
+          minPlayers?: number;
+          maxPlayers?: number;
+          playerId?: string;
+        };
+      };
     };
 
 const wss = new WebSocketServer({ port: 8001 });
@@ -150,6 +176,7 @@ console.log("Game server is running on ws://localhost:8001");
 wss.on("connection", (ws: WebSocket) => {
   console.log("Player connected");
   let playerId: string;
+  let isAdmin = false;
 
   ws.on("message", (message: string) => {
     try {
@@ -157,7 +184,19 @@ wss.on("connection", (ws: WebSocket) => {
       switch (msg.type) {
         case "join":
           playerId = gameService.addPlayer(ws, msg.data.playerName);
-          ws.send(JSON.stringify({ type: "joined", data: { playerId } }));
+          isAdmin = gameService.getCurrentPlayerCount() === 1;
+          ws.send(
+            JSON.stringify({
+              type: "joined",
+              data: {
+                playerId,
+                isAdmin,
+              },
+            })
+          );
+          if (isAdmin) {
+            console.log("First player joined - granted admin status");
+          }
           gameService.broadcastGameState();
           break;
 
@@ -334,6 +373,78 @@ wss.on("connection", (ws: WebSocket) => {
           if (playerId) {
             chatService.markThreadAsRead(msg.data.threadId, playerId);
             gameService.broadcastGameState();
+          }
+          break;
+
+        case "admin":
+          // if (!isAdmin) {
+          //   ws.send(
+          //     JSON.stringify({
+          //       type: "error",
+          //       data: { message: "Unauthorized: Admin access required" },
+          //     })
+          //   );
+          //   return;
+          // }
+
+          try {
+            switch (msg.data.action) {
+              case AdminAction.StartGame:
+                if (gameService.startGame()) {
+                  gameService.broadcastGameState();
+                } else {
+                  ws.send(
+                    JSON.stringify({
+                      type: "error",
+                      data: {
+                        message: "Cannot start game: minimum players not met",
+                      },
+                    })
+                  );
+                }
+                break;
+
+              case AdminAction.ResetGame:
+                // Implementation pending
+                break;
+
+              case AdminAction.SetMinPlayers:
+                if (msg.data.payload?.minPlayers !== undefined) {
+                  gameService.setMinPlayersToStart(msg.data.payload.minPlayers);
+                  gameService.broadcastGameState();
+                }
+                break;
+
+              case AdminAction.SetMaxPlayers:
+                if (msg.data.payload?.maxPlayers !== undefined) {
+                  gameService.setMaxPlayers(msg.data.payload.maxPlayers);
+                  gameService.broadcastGameState();
+                }
+                break;
+
+              case AdminAction.KickPlayer:
+                if (msg.data.payload?.playerId) {
+                  gameService.removeCrew(msg.data.payload.playerId);
+                  gameService.broadcastGameState();
+                }
+                break;
+
+              default:
+                ws.send(
+                  JSON.stringify({
+                    type: "error",
+                    data: { message: "Unknown admin action" },
+                  })
+                );
+            }
+          } catch (err) {
+            const error = err as Error;
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                data: { message: error.message },
+              })
+            );
           }
           break;
 

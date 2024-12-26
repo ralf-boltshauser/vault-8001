@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import {
+  AdminAction,
   Bank,
   ChatThread,
   Crew,
@@ -57,18 +58,37 @@ interface WebSocketContextType {
     payload: InteractionPayload
   ) => void;
   unreadMessagesLength: number;
+  isAdmin: boolean;
+  startGame: () => void;
 }
 
-const WebSocketContext = createContext<WebSocketContextType | undefined>(
-  undefined
-);
+export const WebSocketContext = createContext<WebSocketContextType>({
+  connected: false,
+  connecting: false,
+  playerId: undefined,
+  playerCrew: undefined,
+  gameState: undefined,
+  unreadMessagesLength: 0,
+  connect: () => {},
+  hireMember: () => {},
+  buyPerk: () => {},
+  assignAction: () => {},
+  submitTurn: () => {},
+  sendMessage: () => {},
+  sendInteraction: () => {},
+  markThreadAsRead: () => {},
+  isAdmin: false,
+  startGame: () => {},
+});
 
 const STORAGE_KEYS = {
   PLAYER_ID: "heist_game_player_id",
   PLAYER_NAME: "heist_game_player_name",
 };
 
-export function WebSocketProvider({ children }: { children: React.ReactNode }) {
+export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -78,6 +98,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       : undefined
   );
   const [gameState, setGameState] = useState<GameState>();
+  const [isAdmin, setIsAdmin] = useState(false);
 
   console.log(gameState);
   // Attempt to reconnect with stored credentials
@@ -159,6 +180,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         case "reconnected":
           setPlayerId(message.data.playerId);
           localStorage.setItem(STORAGE_KEYS.PLAYER_ID, message.data.playerId);
+          setIsAdmin(message.data.isAdmin);
           break;
         case "gameState":
           const state = JSON.parse(message.data);
@@ -309,29 +331,64 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       ? gameState.crews.find(([id]) => id === playerId)?.[1]
       : undefined;
 
+  const startGame = useCallback(() => {
+    if (socket && connected && playerId) {
+      socket.send(
+        JSON.stringify({
+          type: "admin",
+          data: {
+            action: AdminAction.StartGame,
+          },
+        })
+      );
+    }
+  }, [socket, connected, playerId]);
+
+  const value = useMemo(
+    () => ({
+      connected,
+      connecting,
+      playerId,
+      playerCrew,
+      gameState,
+      unreadMessagesLength,
+      connect,
+      hireMember,
+      buyPerk,
+      assignAction,
+      submitTurn,
+      sendMessage,
+      sendInteraction,
+      markThreadAsRead,
+      isAdmin,
+      startGame,
+    }),
+    [
+      connected,
+      connecting,
+      playerId,
+      playerCrew,
+      gameState,
+      unreadMessagesLength,
+      connect,
+      hireMember,
+      buyPerk,
+      assignAction,
+      submitTurn,
+      sendMessage,
+      sendInteraction,
+      markThreadAsRead,
+      isAdmin,
+      startGame,
+    ]
+  );
+
   return (
-    <WebSocketContext.Provider
-      value={{
-        connected,
-        connecting,
-        playerId,
-        playerCrew,
-        gameState,
-        unreadMessagesLength,
-        connect,
-        hireMember,
-        buyPerk,
-        assignAction,
-        submitTurn,
-        sendMessage,
-        sendInteraction,
-        markThreadAsRead,
-      }}
-    >
+    <WebSocketContext.Provider value={value}>
       {children}
     </WebSocketContext.Provider>
   );
-}
+};
 
 export const useWebSocket = () => {
   const context = useContext(WebSocketContext);

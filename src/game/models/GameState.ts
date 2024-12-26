@@ -19,9 +19,12 @@ export class GameState {
   private static instance: GameState;
   private crews: Map<string, Crew> = new Map();
   private banks: Map<string, Bank> = new Map();
-  private phase: GamePhase = GamePhase.Planning;
-  private turnNumber: number = 1;
+  private phase: GamePhase = GamePhase.Initialization;
+  private turnNumber: number = 0;
   private chatThreads: Map<string, ChatThread> = new Map();
+  private minPlayersToStart: number = 2;
+  private maxPlayersAllowed: number = 8; // Configurable max players
+  private isAcceptingPlayers: boolean = true;
 
   private constructor() {}
 
@@ -30,6 +33,94 @@ export class GameState {
       GameState.instance = new GameState();
     }
     return GameState.instance;
+  }
+
+  // Bank Generation
+  private generateBanks(): void {
+    this.banks.clear();
+    const playerCount = this.crews.size;
+
+    // Generate small banks (1 per player)
+    for (let i = 0; i < playerCount; i++) {
+      const bank: Bank = {
+        id: generateId(),
+        name: `Local Bank ${i + 1}`,
+        guardMin: 2,
+        guardMax: 5,
+        guardsCurrent: 3,
+        difficultyLevel: 1,
+        lootPotential: 100000,
+        minLootPotential: 50000,
+        securityFeatures: ["Basic Alarm"],
+        attackHistory: [],
+      };
+      this.banks.set(bank.id, bank);
+    }
+
+    // Generate medium banks (1 per 2 players)
+    const mediumBankCount = Math.floor(playerCount / 2);
+    for (let i = 0; i < mediumBankCount; i++) {
+      const bank: Bank = {
+        id: generateId(),
+        name: `Regional Bank ${i + 1}`,
+        guardMin: 4,
+        guardMax: 8,
+        guardsCurrent: 6,
+        difficultyLevel: 2,
+        lootPotential: 250000,
+        minLootPotential: 100000,
+        securityFeatures: ["Advanced Alarm", "Security Cameras"],
+        attackHistory: [],
+      };
+      this.banks.set(bank.id, bank);
+    }
+
+    // Generate one big bank per 4 players
+    const bigBankCount = Math.floor(playerCount / 4);
+    for (let i = 0; i < bigBankCount; i++) {
+      const bank: Bank = {
+        id: generateId(),
+        name: `National Bank ${i + 1}`,
+        guardMin: 8,
+        guardMax: 15,
+        guardsCurrent: 10,
+        difficultyLevel: 3,
+        lootPotential: 500000,
+        minLootPotential: 200000,
+        securityFeatures: [
+          "Advanced Alarm",
+          "Security Cameras",
+          "Armed Guards",
+          "Vault Timer",
+        ],
+        attackHistory: [],
+      };
+      this.banks.set(bank.id, bank);
+    }
+  }
+
+  // Game Start Control
+  public canAcceptMorePlayers(): boolean {
+    return this.isAcceptingPlayers && this.crews.size < this.maxPlayersAllowed;
+  }
+
+  public isReadyToStart(): boolean {
+    return (
+      this.phase === GamePhase.Initialization &&
+      this.crews.size >= this.minPlayersToStart
+    );
+  }
+
+  public startGame(): boolean {
+    if (!this.isReadyToStart()) {
+      return false;
+    }
+
+    this.isAcceptingPlayers = false;
+    this.generateBanks();
+    this.phase = GamePhase.Planning;
+    this.turnNumber = 1;
+    return true;
   }
 
   // Getters
@@ -82,8 +173,14 @@ export class GameState {
 
   // Setters
   addCrew(name: string): Crew {
-    // Use specific IDs for Ralf
-    console.log("Adding crew", name);
+    if (!this.canAcceptMorePlayers()) {
+      throw new Error(
+        this.isAcceptingPlayers
+          ? "Maximum number of players reached"
+          : "Game has already started"
+      );
+    }
+
     let id = generateId();
     if (name === "Ralf's Crew") {
       id = "ykb07swcgaq";
@@ -163,5 +260,29 @@ export class GameState {
     this.phase = data.phase;
     this.turnNumber = data.turnNumber;
     this.chatThreads = new Map(data.chatThreads);
+  }
+
+  public getMinPlayersToStart(): number {
+    return this.minPlayersToStart;
+  }
+
+  public setMinPlayersToStart(count: number): void {
+    this.minPlayersToStart = count;
+  }
+
+  // Configuration methods
+  public getMaxPlayers(): number {
+    return this.maxPlayersAllowed;
+  }
+
+  public setMaxPlayers(count: number): void {
+    if (this.crews.size > count) {
+      throw new Error("Cannot set max players below current player count");
+    }
+    this.maxPlayersAllowed = count;
+  }
+
+  public getCurrentPlayerCount(): number {
+    return this.crews.size;
   }
 }

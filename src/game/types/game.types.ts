@@ -34,6 +34,7 @@ export enum PerkType {
 }
 
 export enum GamePhase {
+  Initialization = "initialization",
   Planning = "planning",
   Resolution = "resolution",
 }
@@ -323,3 +324,12 @@ export type WebSocketMessage =
       data: { crewId: string; memberId: string; action: PlannedAction };
     }
   | { type: "ready"; data: { crewId: string } };
+
+export enum AdminAction {
+  StartGame = "start_game",
+  ResetGame = "reset_game",
+  SetMinPlayers = "set_min_players",
+  SetMaxPlayers = "set_max_players",
+  KickPlayer = "kick_player",
+  // Extensible for more admin actions
+}

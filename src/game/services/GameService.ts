@@ -784,4 +784,26 @@ export class GameService {
     ];
     return lastWords[Math.floor(Math.random() * lastWords.length)];
   }
+
+  // Game Control Methods
+  public startGame(): boolean {
+    return this.gameState.startGame();
+  }
+
+  public setMinPlayersToStart(count: number): void {
+    this.gameState.setMinPlayersToStart(count);
+  }
+
+  public setMaxPlayers(count: number): void {
+    this.gameState.setMaxPlayers(count);
+  }
+
+  public removeCrew(crewId: string): void {
+    this.gameState.removeCrew(crewId);
+    this.playerConnections.delete(crewId);
+  }
+
+  public getCurrentPlayerCount(): number {
+    return this.gameState.getCurrentPlayerCount();
+  }
 }
