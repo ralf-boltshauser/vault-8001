@@ -319,7 +319,11 @@ export class GameService {
     if (attack.casualties) {
       // only write report for phone members
       attack.casualties
-        .filter((c) => c.perks.some((p) => p.type === PerkType.Phone))
+        .filter(
+          (c) =>
+            c.perks.some((p) => p.type === PerkType.Phone) ||
+            c.status === CrewMemberStatus.Healthy
+        )
         .forEach((casualty) => {
           const crew = this.findCrewByMemberId(casualty.id);
           if (!crew) return;
@@ -397,6 +401,12 @@ export class GameService {
           if (member.jailTerm <= 0) {
             member.status = CrewMemberStatus.Healthy;
             member.jailTerm = undefined;
+
+            member.action = Action.Work;
+            member.plannedAction = {
+              type: Action.Work,
+              attackType: AttackType.Hostile,
+            };
 
             // Add to existing reports instead of replacing
             crew.turnReports = crew.turnReports || [];

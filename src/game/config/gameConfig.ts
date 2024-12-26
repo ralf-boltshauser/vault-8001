@@ -30,8 +30,8 @@ export const GAME_CONFIG = {
   GUN_ADVANTAGE_CHANCE: 0.7, // 70% win chance with gun advantage
   DEATH_VS_GUARDS_CHANCE: 0.3, // 30% chance to die when losing to guards
   JAIL_TERMS: {
-    WITH_GUN: 5,
-    WITHOUT_GUN: 3,
+    WITH_GUN: 2,
+    WITHOUT_GUN: 1,
   },
 
   // Work Bonuses

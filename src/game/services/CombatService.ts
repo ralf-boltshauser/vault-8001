@@ -71,14 +71,16 @@ export class CombatService {
     isGuardFight: boolean = true
   ): CrewCombatantResult {
     // In crew vs crew combat, losers always die
-    const died =
-      !isGuardFight || Math.random() < GAME_CONFIG.DEATH_VS_GUARDS_CHANCE;
-    const jailed = isGuardFight && !died;
+    // const died =
+    //   !isGuardFight || Math.random() < GAME_CONFIG.DEATH_VS_GUARDS_CHANCE;
+    // const jailed = isGuardFight && !died;
+    const died = false;
+    const jailed = Math.random() < 0.5;
     const hasGunPerk = loser.perks.some((p: Perk) => p.type === PerkType.Gun);
     const jailTerm = jailed
-      ? hasGunPerk
-        ? GAME_CONFIG.JAIL_TERMS.WITH_GUN
-        : GAME_CONFIG.JAIL_TERMS.WITHOUT_GUN
+      ? (hasGunPerk
+          ? GAME_CONFIG.JAIL_TERMS.WITH_GUN
+          : GAME_CONFIG.JAIL_TERMS.WITHOUT_GUN) + 1
       : 0;
 
     // Clear actions if jailed
