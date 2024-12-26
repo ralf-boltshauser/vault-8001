@@ -75,31 +75,31 @@ export function GameInterface() {
 
   return (
     <div className="container mx-auto">
-      <div className="grid gap-6">
+      <div className="grid gap-4">
         <TurnSubmission />
 
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-white">Your Crew</h2>
-            <div className="flex items-center gap-4">
-              <div className="text-gray-300">
+            <h2 className="text-xl font-bold text-white">Your Crew</h2>
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-gray-300">
                 Capital:{" "}
                 <span className="text-white">
                   ${playerCrew.capital.toLocaleString()}
                 </span>
               </div>
               {healthyMembers.length > 0 && (
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <button
                     onClick={selectAllHealthy}
-                    className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm"
+                    className="px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs"
                   >
                     Select All Healthy
                   </button>
                   {hasWithoutAction && (
                     <button
                       onClick={selectAllWithoutAction}
-                      className="px-3 py-1 rounded bg-gray-600 hover:bg-gray-700 text-white text-sm"
+                      className="px-2 py-0.5 rounded bg-gray-600 hover:bg-gray-700 text-white text-xs"
                     >
                       Select All Without Action
                     </button>
@@ -107,7 +107,7 @@ export function GameInterface() {
                   {selectedMembers.length > 0 && (
                     <button
                       onClick={clearSelection}
-                      className="px-3 py-1 rounded bg-gray-600 hover:bg-gray-700 text-white text-sm"
+                      className="px-2 py-0.5 rounded bg-gray-600 hover:bg-gray-700 text-white text-xs"
                     >
                       Clear Selection
                     </button>
@@ -116,23 +116,25 @@ export function GameInterface() {
               )}
               <button
                 onClick={() => hireMember()}
-                className="px-3 py-1 rounded bg-green-600 hover:bg-green-700 text-white text-sm"
+                className="px-2 py-0.5 rounded bg-green-600 hover:bg-green-700 text-white text-xs"
               >
                 Hire Member
               </button>
             </div>
           </div>
 
-          {selectedMembers.length > 0 && (
-            <div className="bg-gray-800 p-4 rounded-lg">
-              <BulkActionManager
-                selectedMembers={selectedMembers}
-                onClose={clearSelection}
-              />
-            </div>
-          )}
+          <div
+            className={`bg-gray-800 p-3 rounded ${
+              selectedMembers.length === 0 ? "opacity-50" : ""
+            }`}
+          >
+            <BulkActionManager
+              selectedMembers={selectedMembers}
+              onClose={clearSelection}
+            />
+          </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {sortedMembers.map((member) => (
               <CrewMemberCard
                 key={member.id}

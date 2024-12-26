@@ -53,55 +53,57 @@ export function BulkActionManager({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-white">
-          Set Action for {members.length} Crew Members
+        <h3 className="text-sm font-semibold text-white">
+          {selectedMembers.length > 0
+            ? `Set Action (${members.length})`
+            : "Select crew members to assign actions"}
         </h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-300">
-          <span className="material-icons">close</span>
-        </button>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-1">
         <button
           onClick={() => handleActionChange(Action.Work)}
-          className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+          className="px-2 py-0.5 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
         >
           Work
         </button>
         <button
           onClick={() => handleActionChange(Action.None)}
-          className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+          className="px-2 py-0.5 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
         >
           None
         </button>
       </div>
 
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium text-gray-400">Available Banks:</h4>
+      <div className="space-y-1">
+        <h4 className="text-xs font-medium text-gray-400">Banks:</h4>
         {banks.map((bank) => (
-          <div key={`bank-${bank.id}`} className="flex items-center gap-2">
+          <div
+            key={`bank-${bank.id}`}
+            className="flex items-center gap-1 text-xs"
+          >
             <div className="flex-1">
               <div className="text-white">{bank.name}</div>
-              <div className="text-sm text-gray-400">
-                Guards: {bank.guardMin || 0} to {bank.guardMax || 0} |
-                Potential: ${(bank.lootPotential || 0).toLocaleString()}
+              <div className="text-gray-400">
+                Guards: {bank.guardMin || 0}-{bank.guardMax || 0} | $
+                {(bank.lootPotential || 0).toLocaleString()}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               <button
                 onClick={() =>
                   handleAttackSelect(bank.id, AttackType.Cooperative)
                 }
-                className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+                className="px-2 py-0.5 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 title="Work together with other crews"
               >
                 Co-op
               </button>
               <button
                 onClick={() => handleAttackSelect(bank.id, AttackType.Hostile)}
-                className="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+                className="px-2 py-0.5 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 title="Fight other crews for the loot"
               >
                 Hostile

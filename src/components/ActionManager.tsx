@@ -51,11 +51,11 @@ export function ActionManager({ member }: ActionManagerProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
+    <div className="space-y-2">
+      <div className="flex gap-1">
         <button
           onClick={() => handleActionChange(Action.Work)}
-          className={`px-3 py-1 rounded ${
+          className={`px-2 py-0.5 rounded text-xs ${
             member.plannedAction?.type === Action.Work
               ? "bg-green-600 text-white"
               : "bg-gray-700 hover:bg-gray-600 text-gray-300"
@@ -65,7 +65,7 @@ export function ActionManager({ member }: ActionManagerProps) {
         </button>
         <button
           onClick={() => handleActionChange(Action.None)}
-          className={`px-3 py-1 rounded ${
+          className={`px-2 py-0.5 rounded text-xs ${
             !member.plannedAction || member.plannedAction.type === Action.None
               ? "bg-gray-600 text-white"
               : "bg-gray-700 hover:bg-gray-600 text-gray-300"
@@ -75,8 +75,8 @@ export function ActionManager({ member }: ActionManagerProps) {
         </button>
       </div>
 
-      <div className="space-y-2">
-        <h4 className="text-sm font-medium text-gray-400">Available Banks:</h4>
+      <div className="space-y-1">
+        <h4 className="text-xs font-medium text-gray-400">Banks:</h4>
         {banks.map((bank) => {
           const isAttackingThisBank =
             member.plannedAction?.type === Action.Attack &&
@@ -91,20 +91,23 @@ export function ActionManager({ member }: ActionManagerProps) {
             member.plannedAction?.attackType === AttackType.Hostile;
 
           return (
-            <div key={`bank-${bank.id}`} className="flex items-center gap-2">
+            <div
+              key={`bank-${bank.id}`}
+              className="flex items-center gap-1 text-xs"
+            >
               <div className="flex-1">
                 <div className="text-white">{bank.name}</div>
-                <div className="text-sm text-gray-400">
-                  Guards: {bank.guardMin || 0} to {bank.guardMax || 0} |
-                  Potential: ${(bank.lootPotential || 0).toLocaleString()}
+                <div className="text-gray-400">
+                  Guards: {bank.guardMin || 0}-{bank.guardMax || 0} | $
+                  {(bank.lootPotential || 0).toLocaleString()}
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 <button
                   onClick={() =>
                     handleAttackSelect(bank.id, AttackType.Cooperative)
                   }
-                  className={`px-3 py-1 rounded ${
+                  className={`px-2 py-0.5 rounded text-xs ${
                     isCooperative
                       ? "bg-blue-600 text-white"
                       : "bg-gray-700 hover:bg-gray-600 text-gray-300"
@@ -117,7 +120,7 @@ export function ActionManager({ member }: ActionManagerProps) {
                   onClick={() =>
                     handleAttackSelect(bank.id, AttackType.Hostile)
                   }
-                  className={`px-3 py-1 rounded ${
+                  className={`px-2 py-0.5 rounded text-xs ${
                     isHostile
                       ? "bg-red-600 text-white"
                       : "bg-gray-700 hover:bg-gray-600 text-gray-300"
