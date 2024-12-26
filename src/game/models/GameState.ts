@@ -85,7 +85,7 @@ export class GameState {
         guardMax: 15,
         guardsCurrent: 10,
         difficultyLevel: 3,
-        lootPotential: 500000,
+        lootPotential: 200000,
         minLootPotential: 200000,
         securityFeatures: [
           "Advanced Alarm",

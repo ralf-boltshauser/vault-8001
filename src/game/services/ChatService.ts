@@ -67,7 +67,11 @@ export class ChatService {
     content: string
   ): ChatMessagePiece | undefined {
     const thread = this.gameState.getChatThread(threadId);
+
     if (!thread) return;
+
+    this.markThreadAsRead(threadId, senderId);
+
     const message: ChatMessagePiece = {
       id: generateId(),
       type: "chat_message",

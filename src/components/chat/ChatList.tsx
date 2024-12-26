@@ -23,7 +23,7 @@ export default function ChatList() {
   console.log(chatThreads);
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] bg-gray-900">
+    <div className="flex flex-grow bg-gray-900">
       {/* Chat List */}
       <div className="w-1/4 border-r border-gray-700 overflow-y-auto bg-gray-800">
         {chatThreads.map((thread) => {
@@ -34,6 +34,10 @@ export default function ChatList() {
             .filter(([_, crew]) => otherParticipants.includes(crew.id))
             .map(([_, crew]) => crew);
 
+          const hasUnreadMessagesFromMe = thread.messages.some(
+            (message) => message.senderId !== playerCrew.id && !message.isRead
+          );
+
           return (
             <div
               key={thread.id}
@@ -42,9 +46,16 @@ export default function ChatList() {
               }`}
               onClick={() => setSelectedThread(thread.id)}
             >
-              <h3 className="font-semibold text-gray-100">
-                {otherCrews.map((crew) => crew.name).join(", ") || "Unknown"}
-              </h3>
+              <div className="flex justify-between items-start">
+                <h3 className="font-semibold text-gray-100">
+                  {otherCrews.map((crew) => crew.name).join(", ") || "Unknown"}
+                </h3>
+                {hasUnreadMessagesFromMe && (
+                  <span className="bg-blue-500 text-xs text-white px-2 py-0.5 rounded">
+                    Unread
+                  </span>
+                )}
+              </div>
               {thread.messages.length > 0 && (
                 <p className="text-sm text-gray-400 truncate">
                   {thread.messages[thread.messages.length - 1].content}
@@ -56,7 +67,7 @@ export default function ChatList() {
       </div>
 
       {/* Chat Window */}
-      <div className="flex-1 bg-gray-900">
+      <div className="flex-1 bg-gray-900 max-h-[calc(100vh-4.5rem)]">
         {selectedThread ? (
           <ChatThread threadId={selectedThread} />
         ) : (

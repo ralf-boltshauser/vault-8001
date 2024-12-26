@@ -3,9 +3,9 @@ import Link from "next/link";
 
 export default function ChatPage() {
   return (
-    <div className="container mx-auto">
+    <div className="-m-5  h-screen flex flex-col">
       {" "}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex mt-5 justify-between mx-5 items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-100">Chats</h1>
         <Link
           href="/"
