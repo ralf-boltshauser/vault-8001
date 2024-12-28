@@ -4,10 +4,24 @@
 
 ## Todos
 - [ ] settings aka resetting the game and not needing to clear the browser storage
-- [ ] dynamic banks based on amount of players
-- [ ] ensure that in the early phase the gap is not opening between players
+- [ ] show what has happened last turn
+  - [ ] +15'993.- capital
+  - [ ] highlight banks that were robbed
+- [ ] timer that turns off the chat after 30 sec
 
 ## Ideas
+- [ ] there are auctions to buy features
+  - [ ] major
+  - [ ] crypto market
+  - [ ] spy drone
+  - [ ] casino
+  - [ ] hacker crew
+  - [ ] black market
+  - [ ] elite training academy
+  - [ ] vault -> players can store money there to be safe from raids or smth
+- [ ] bigger banks have security features that need to be disabled costly 
+- [ ] attack other crews that are in the lead
+
 - [ ] banks gain more cash over time
 - [ ] when a bank was successfully robbed, it's cash is reduced, and the guards are increased
 - [ ] different kind of crew members with different skills and costs

@@ -112,6 +112,8 @@ export interface TurnReport {
 export interface Crew {
   id: string;
   name: string;
+  lastCapital: number;
+  turnCapitalGain: number;
   capital: number;
   crewMembers: CrewMember[];
   reputation: number;

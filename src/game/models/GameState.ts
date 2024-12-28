@@ -190,6 +190,8 @@ export class GameState {
       id,
       name,
       capital: 200000,
+      lastCapital: 200000,
+      turnCapitalGain: 0,
       crewMembers: [],
       reputation: 0,
       morale: 100,

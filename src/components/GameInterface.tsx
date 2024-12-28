@@ -87,6 +87,19 @@ export function GameInterface() {
                 <span className="text-white">
                   ${playerCrew.capital.toLocaleString()}
                 </span>
+                {playerCrew.turnCapitalGain !== undefined &&
+                  playerCrew.turnCapitalGain != 0 && (
+                    <span
+                      className={`ml-2 text-xs ${
+                        playerCrew.turnCapitalGain > 0
+                          ? "text-green-400"
+                          : "text-red-400"
+                      }`}
+                    >
+                      {playerCrew.turnCapitalGain > 0 ? "+" : ""}$
+                      {playerCrew.turnCapitalGain.toLocaleString()}
+                    </span>
+                  )}
               </div>
               {healthyMembers.length > 0 && (
                 <div className="flex gap-1.5">

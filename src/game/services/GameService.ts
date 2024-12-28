@@ -221,8 +221,10 @@ export class GameService {
     const crews = this.gameState.getAllCrews();
     const bankAttacks = new Map<string, CrewMember[]>(); // bankId -> attackers
 
-    // Clear all reports at the start of resolution
+    // Store last capital and clear reports at the start of resolution
     crews.forEach((crew) => {
+      crew.lastCapital = crew.capital;
+      crew.turnCapitalGain = 0;
       crew.turnReports = [];
       this.gameState.updateCrew(crew);
     });
@@ -433,6 +435,14 @@ export class GameService {
     // Move directly to next planning phase
     this.gameState.setPhase(GamePhase.Planning);
     this.gameState.setTurnNumber(this.gameState.getTurnNumber() + 1);
+
+    // calculate turn capital gain
+    const crews = this.gameState.getAllCrews();
+    crews.forEach((crew) => {
+      crew.turnCapitalGain = crew.capital - crew.lastCapital;
+      this.gameState.updateCrew(crew);
+    });
+
     this.broadcastGameState();
   }
 
